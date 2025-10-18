@@ -1,25 +1,70 @@
 import React, { useState } from "react";
-import { login } from "@/api/auth";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-const Login = () => {
-  const [form, setForm] = useState({ email: "", password: "" });
+const Login: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await login(form);
-    localStorage.setItem("token", res.data.token);
-    alert("Login successful");
+    setError("");
+
+    try {
+      const res = await axios.post("http://localhost:8000/api/login/", { email, password });
+      const user = res.data.user;
+
+      // Store user info locally
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Redirect by role
+      switch (user.role) {
+        case "admin":
+          navigate("/admin/dashboard");
+          break;
+        case "student":
+          navigate("/student/dashboard");
+          break;
+        case "examiner":
+          navigate("/examiner/dashboard");
+          break;
+        default:
+          navigate("/");
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Login failed");
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-4">
-      <input name="email" type="email" placeholder="Email" onChange={handleChange} className="border p-2 w-full" />
-      <input name="password" type="password" placeholder="Password" onChange={handleChange} className="border p-2 w-full" />
-      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Login</button>
-    </form>
+    <div className="flex justify-center items-center h-screen bg-gray-50">
+      <form onSubmit={handleLogin} className="bg-white shadow-md p-8 rounded-md w-96">
+        <h2 className="text-xl font-semibold mb-4 text-center">Login</h2>
+        {error && <p className="text-red-500 text-center mb-2">{error}</p>}
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full border p-2 mb-3 rounded"
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full border p-2 mb-3 rounded"
+        />
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        >
+          Login
+        </button>
+      </form>
+    </div>
   );
 };
 
