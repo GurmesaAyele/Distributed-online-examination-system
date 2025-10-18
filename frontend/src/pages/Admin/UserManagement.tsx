@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from "@/api/users";
+import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from "../../api/users";
 
 const UserManagement = () => {
   const [users, setUsers] = useState<any[]>([]);
