@@ -1,4 +1,4 @@
-import AdminDashboard from "./Admin/pages/UserManagement"; // import your dashboard
+import AdminDashboard from "pages/UserManagement"; // import your dashboard
 
 function App() {
   return (
