@@ -1,9 +1,9 @@
-import AdminDashboard from "pages/UserManagement"; // import your dashboard
+import UserManagement from "./pages/Admin/UserManagement";
 
 function App() {
   return (
     <div>
-      <AdminDashboard />
+      <UserManagement />
     </div>
   );
 }
