@@ -15,9 +15,9 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# ------------------------------------------
+# Quick-start development settings
+# ------------------------------------------
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-w9rsk#q78+_3!u%0cfxn7=*kw$6w+$5xffr$@njw=()4v$5sqs'
@@ -27,32 +27,34 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
-# Application definition
-
+# ==========================================
+# Installed Apps
+# ==========================================
 INSTALLED_APPS = [
-    # Default Django apps (required)
+    # Default Django apps
     'django.contrib.admin',
     'django.contrib.auth',
-    'django.contrib.contenttypes',  # THIS fixes your error
+    'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
     # Third-party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
 
     # Local apps
     'api',
 ]
 
-
-
+# ==========================================
+# Middleware
+# ==========================================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # if you use corsheaders
+    'corsheaders.middleware.CorsMiddleware',  # must be high in the list
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -60,10 +62,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
-
+# Root URL config
 ROOT_URLCONF = 'backend.urls'
 
+# Templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -81,14 +83,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+# ==========================================
+# Database (PostgreSQL)
+# ==========================================
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'grum',  # your database name
+        'NAME': 'grum',
         'USER': 'postgres',
         'PASSWORD': '14162121',
         'HOST': 'localhost',
@@ -96,11 +97,45 @@ DATABASES = {
     }
 }
 
+# ==========================================
+# Custom User Model
+# ==========================================
+AUTH_USER_MODEL = "api.User"
 
+# ==========================================
+# Password Hashers
+# ==========================================
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+]
 
+# ==========================================
+# CORS Settings
+# ==========================================
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # React Vite dev server
+]
+CORS_ALLOW_CREDENTIALS = True
+
+# ==========================================
+# Django REST Framework
+# ==========================================
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+# ==========================================
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
+# ==========================================
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -116,25 +151,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+# ==========================================
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
+# ==========================================
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
+# ==========================================
+# Static files
+# ==========================================
 STATIC_URL = 'static/'
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
