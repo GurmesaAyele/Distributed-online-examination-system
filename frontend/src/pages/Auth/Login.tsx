@@ -1,25 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import "./Login.css";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Add floating particles
+  useEffect(() => {
+    const particles = document.querySelector('.particles');
+    if (particles) {
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.width = `${Math.random() * 4 + 2}px`;
+        particle.style.height = particle.style.width;
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 15}s`;
+        particles.appendChild(particle);
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:8000/api/login/", { email, password });
+      const res = await axios.post("http://localhost:8000/api/login/", {
+        email,
+        password,
+      });
       const user = res.data.user;
 
-      // Store user info locally
       localStorage.setItem("user", JSON.stringify(user));
 
-      // Redirect by role
       switch (user.role) {
         case "admin":
           navigate("/admin/dashboard");
@@ -35,33 +56,68 @@ const Login: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.response?.data?.error || "Login failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-50">
-      <form onSubmit={handleLogin} className="bg-white shadow-md p-8 rounded-md w-96">
-        <h2 className="text-xl font-semibold mb-4 text-center">Login</h2>
-        {error && <p className="text-red-500 text-center mb-2">{error}</p>}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border p-2 mb-3 rounded"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border p-2 mb-3 rounded"
-        />
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+    <div className="login-container">
+      {/* Background Elements */}
+      <div className="floating-shapes">
+        <div className="shape"></div>
+        <div className="shape"></div>
+        <div className="shape"></div>
+        <div className="shape"></div>
+      </div>
+      
+      <div className="particles"></div>
+
+      {/* Welcome Section */}
+      <div className="welcome-text">
+        <h1>Welcome to Online Examination System</h1>
+        <p>Secure, Reliable, and Efficient Testing Platform</p>
+      </div>
+
+      {/* Login Form */}
+      <form onSubmit={handleLogin} className="login-form">
+        <div className="form-welcome-text">
+          <h2 className="login-title">Login</h2>
+          <p>Please log in to continue</p>
+        </div>
+
+        {error && <p className="error-message">{error}</p>}
+
+        <div className="input-group">
+          <input
+            type="email"
+            placeholder=" "
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="login-input"
+            required
+          />
+          <label className="floating-label">Email Address</label>
+        </div>
+
+        <div className="input-group">
+          <input
+            type="password"
+            placeholder=" "
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="login-input"
+            required
+          />
+          <label className="floating-label">Password</label>
+        </div>
+
+        <button 
+          type="submit" 
+          className={`login-button ${isLoading ? 'loading' : ''}`}
+          disabled={isLoading}
         >
-          Login
+          {isLoading ? '' : 'Login'}
         </button>
       </form>
     </div>
