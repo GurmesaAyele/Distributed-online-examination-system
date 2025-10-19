@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Auth/Login";
 import AdminDashboard from "./pages/Admin/UserManagement";
-import StudentDashboard from "./pages/Student/Dashboard";
+import StudentDashboard from "./pages/student/dashboard";
 import ExaminerDashboard from "./pages/Examiner/Dashboard";
 
 // Role-based route protection
