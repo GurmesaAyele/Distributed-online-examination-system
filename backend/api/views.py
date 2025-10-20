@@ -1,10 +1,14 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from django.utils import timezone
-from .models import User
+from .models import User, Exam, Question, Result
+from .serializers import ExamSerializer, QuestionSerializer, ResultSerializer
 from rest_framework.authtoken.models import Token
 
+# ----------------------------
+# Login endpoint
+# ----------------------------
 @api_view(['POST'])
 def login_view(request):
     email = request.data.get('email')
@@ -37,3 +41,18 @@ def login_view(request):
             return Response({"error": "Invalid password"}, status=status.HTTP_401_UNAUTHORIZED)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+# ----------------------------
+# Exam API endpoints
+# ----------------------------
+class ExamViewSet(viewsets.ModelViewSet):
+    queryset = Exam.objects.all()
+    serializer_class = ExamSerializer
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+
+class ResultViewSet(viewsets.ModelViewSet):
+    queryset = Result.objects.all()
+    serializer_class = ResultSerializer
