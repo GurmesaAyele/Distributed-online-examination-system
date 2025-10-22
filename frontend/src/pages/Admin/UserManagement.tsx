@@ -1,83 +1,239 @@
-import React, { useEffect, useState } from "react";
-import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from "../../api/users";
+// src/pages/admin/UserManagement.tsx
+import React, { useState, useEffect } from 'react';
+import { User, CreateUserData } from '../../types';
+import { usersApi } from '../../api/users';
+import './UserManagement.css';
 
-const UserManagement = () => {
-  const [users, setUsers] = useState<any[]>([]);
-  const [form, setForm] = useState({ email: "", first_name: "", last_name: "", role: "student" });
-  const [editId, setEditId] = useState<number | null>(null);
-
-  const loadUsers = async () => {
-    const res = await getUsers();
-    setUsers(res.data);
-  };
+const UserManagement: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   useEffect(() => {
     loadUsers();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const loadUsers = async () => {
+    try {
+      const usersData = await usersApi.getUsers();
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreateUser = async (userData: CreateUserData) => {
+    try {
+      await usersApi.createUser(userData);
+      await loadUsers();
+      setShowCreateForm(false);
+    } catch (error) {
+      console.error('Error creating user:', error);
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await usersApi.deleteUser(id);
+        await loadUsers();
+      } catch (error) {
+        console.error('Error deleting user:', error);
+      }
+    }
+  };
+
+  if (loading) {
+    return <div>Loading users...</div>;
+  }
+
+  return (
+    <div className="user-management">
+      <div className="page-header">
+        <h1>User Management</h1>
+        <button 
+          onClick={() => setShowCreateForm(true)}
+          className="btn-primary"
+        >
+          + Add User
+        </button>
+      </div>
+
+      {showCreateForm && (
+        <CreateUserForm
+          onSubmit={handleCreateUser}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      )}
+
+      <div className="users-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td>{user.username}</td>
+                <td>{user.first_name} {user.last_name}</td>
+                <td>{user.email}</td>
+                <td>
+                  <span className={`role-badge role-${user.role}`}>
+                    {user.role}
+                  </span>
+                </td>
+                <td>
+                  <span className={`status-badge ${user.is_active ? 'active' : 'inactive'}`}>
+                    {user.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td>
+                  <button 
+                    onClick={() => setEditingUser(user)}
+                    className="btn-secondary"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteUser(user.id)}
+                    className="btn-danger"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+interface CreateUserFormProps {
+  onSubmit: (data: CreateUserData) => void;
+  onCancel: () => void;
+}
+
+const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState<CreateUserData>({
+    username: '',
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    role: 'student',
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editId) await updateUser(editId, form);
-    else await createUser(form);
-    setEditId(null);
-    setForm({ email: "", first_name: "", last_name: "", role: "student" });
-    loadUsers();
+    onSubmit(formData);
   };
 
-  const handleDelete = async (id: number) => {
-    await deleteUser(id);
-    loadUsers();
-  };
-
-  const handleResetPassword = async (id: number) => {
-    const new_password = prompt("Enter new password:");
-    if (new_password) await resetUserPassword(id, new_password);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   return (
-    <div className="p-6">
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
-        <input name="email" placeholder="Email" value={form.email} onChange={handleChange} className="border p-2" />
-        <input name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} className="border p-2" />
-        <input name="last_name" placeholder="Last Name" value={form.last_name} onChange={handleChange} className="border p-2" />
-        <select name="role" value={form.role} onChange={handleChange} className="border p-2">
-          <option value="student">Student</option>
-          <option value="teacher">Teacher</option>
-          <option value="examiner">Examiner</option>
-          <option value="admin">Admin</option>
-        </select>
-        <button type="submit" className="bg-blue-600 text-white px-3 py-2 rounded">
-          {editId ? "Update" : "Add"}
-        </button>
-      </form>
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>Create New User</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Username</label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
 
-      <table className="w-full border">
-        <thead className="bg-gray-100">
-          <tr>
-            <th>Email</th>
-            <th>Name</th>
-            <th>Role</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="border-t text-center">
-              <td>{u.email}</td>
-              <td>{u.first_name} {u.last_name}</td>
-              <td>{u.role}</td>
-              <td className="space-x-2">
-                <button onClick={() => { setForm(u); setEditId(u.id); }} className="bg-yellow-500 text-white px-2 py-1 rounded">Edit</button>
-                <button onClick={() => handleDelete(u.id)} className="bg-red-600 text-white px-2 py-1 rounded">Delete</button>
-                <button onClick={() => handleResetPassword(u.id)} className="bg-green-600 text-white px-2 py-1 rounded">Reset Password</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          <div className="form-row">
+            <div className="form-group">
+              <label>First Name</label>
+              <input
+                type="text"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Last Name</label>
+              <input
+                type="text"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Role</label>
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                required
+              >
+                <option value="student">Student</option>
+                <option value="examiner">Examiner</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button type="button" onClick={onCancel} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              Create User
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

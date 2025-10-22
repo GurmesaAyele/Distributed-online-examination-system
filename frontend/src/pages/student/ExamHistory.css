@@ -1,0 +1,81 @@
+/* src/pages/student/ExamHistory.css */
+.exam-history {
+  padding: 20px;
+}
+
+.exam-history h1 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+}
+
+.attempts-table {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.attempts-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.attempts-table th,
+.attempts-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.attempts-table th {
+  background: #34495e;
+  color: white;
+  font-weight: 600;
+}
+
+.attempts-table tr:hover {
+  background: #f8f9fa;
+}
+
+.score {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.in_progress {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.btn-secondary {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-secondary:hover {
+  background: #7f8c8d;
+}
+
+.no-history {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
