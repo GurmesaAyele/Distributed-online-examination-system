@@ -1,0 +1,59 @@
+/* Basic modern login styling */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f2f5;
+}
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.login-box {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 350px;
+}
+
+.login-box h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+}
+
+.login-box button {
+    width: 100%;
+    padding: 0.8rem;
+    margin-top: 1rem;
+    border: none;
+    background: #4f46e5;
+    color: white;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.login-box button:hover {
+    background: #4338ca;
+}
+
+.error {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
