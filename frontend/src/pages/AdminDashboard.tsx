@@ -1,32 +1,6 @@
-/*
-AdminDashboard.tsx
-Single-file React + Vite + TypeScript admin dashboard demo
-
-How to use:
-1. Place this file in your Vite + React + TypeScript project under src/components/AdminDashboard.tsx
-2. Import and render in App.tsx: import AdminDashboard from './components/AdminDashboard';
-3. This file uses only React + TypeScript + plain CSS embedded here. No external libraries required.
-
-Notes:
-- Data is persisted to localStorage for demonstration.
-- Exports support CSV/JSON for reports; PDF/XLSX generation requires libraries and is noted in comments.
-- Animations are done with CSS keyframes and transitions.
-
-This component implements UI + mock logic for the features you requested:
-- User management (add, edit, delete, change role, reset password, multiple admins)
-- Exam creation, edit, schedule, publish/unpublish, assign examiner, assign to students/classes
-- Question bank (various types) with categorization and editing
-- Monitoring dashboard with simulated real-time status and anti-cheating stubs (Tab Switching Detection, Force Submit)
-- Reports export (CSV/JSON) and simple chart visualization
-- Notifications composer
-- Settings and security toggles (Policies, Backup/Security Management)
-
-This is a demo UI to integrate with real backend endpoints (replace mock functions).
-*/
-
 import React, { useEffect, useMemo, useState } from 'react';
 
-// -------------------- Types --------------------
+// -------------------- Enhanced Types --------------------
 type Role = 'student' | 'teacher' | 'admin';
 
 type User = {
@@ -35,7 +9,13 @@ type User = {
   email: string;
   role: Role;
   active?: boolean;
+  department?: string;
+  lastLogin?: string;
+  createdAt: string;
+  permissions?: string[];
 };
+
+type Permission = 'manage_users' | 'manage_exams' | 'view_reports' | 'send_notifications' | 'monitor_exams';
 
 type QuestionType = 'mcq' | 'truefalse' | 'short' | 'essay' | 'fill';
 
@@ -46,29 +26,90 @@ type Question = {
   difficulty: 'easy' | 'medium' | 'hard';
   type: QuestionType;
   text: string;
-  choices?: string[]; // mcq, truefalse (optionally)
+  choices?: string[];
+  correctAnswer?: string;
+  marks: number;
   image?: string | null;
+  createdAt: string;
 };
 
 type Exam = {
   id: string;
   title: string;
   subject: string;
+  category: 'midterm' | 'final' | 'quiz' | 'assignment';
+  department: string;
   description?: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  date: string;
+  startTime: string;
+  endTime: string;
   durationMinutes: number;
   totalMarks: number;
   passingMark: number;
-  randomize: boolean; // Randomization rules
+  randomize: boolean;
   published: boolean;
-  examinerId?: string | null;
-  assignedTo?: string[]; // user ids / class Ids
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  examinerId?: string;
+  assignedTo: string[];
+  security: {
+    faceDetection: boolean;
+    browserLockdown: boolean;
+    tabSwitchingDetection: boolean;
+    copyPasteDisabled: boolean;
+  };
+  createdAt: string;
+};
+
+type LoginAttempt = {
+  id: string;
+  userId: string;
+  email: string;
+  timestamp: string;
+  ip: string;
+  success: boolean;
+  userAgent: string;
+};
+
+type CheatingAlert = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  examId: string;
+  examTitle: string;
+  type: 'tab_switch' | 'copy_paste' | 'multiple_faces' | 'unusual_activity';
+  timestamp: string;
+  severity: 'low' | 'medium' | 'high';
+  resolved: boolean;
+};
+
+type Result = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  examId: string;
+  examTitle: string;
+  score: number;
+  totalMarks: number;
+  percentage: number;
+  grade: string;
+  submittedAt: string;
+  duration: number;
+};
+
+type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  targetRole: Role | 'all';
+  sentBy: string;
+  sentAt: string;
+  read: boolean;
 };
 
 // -------------------- Helpers --------------------
 const uid = (prefix = '') => prefix + Math.random().toString(36).slice(2, 9);
+const today = () => new Date().toISOString().slice(0, 10);
+const now = () => new Date().toISOString();
 
 const saveToLS = (k: string, v: any) => localStorage.setItem(k, JSON.stringify(v));
 const loadFromLS = <T,>(k: string, fallback: T) => {
@@ -80,30 +121,36 @@ const loadFromLS = <T,>(k: string, fallback: T) => {
   }
 };
 
-// -------------------- Initial Mock Data --------------------
+const generateFakeIP = () => `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+
+// -------------------- Enhanced Mock Data --------------------
 const initUsers = (): User[] =>
   loadFromLS<User[]>('demo_users', [
-    { id: 'u_admin', name: 'Super Admin', email: 'admin@demo.com', role: 'admin', active: true },
-    { id: 'u_admin2', name: 'Security Admin', email: 'sec@demo.com', role: 'admin', active: true },
-    { id: 'u_teacher', name: 'Dr. T', email: 'teacher@demo.com', role: 'teacher', active: true },
-    { id: 'u_student1', name: 'Alice', email: 'alice@demo.com', role: 'student', active: true },
-    { id: 'u_student2', name: 'Bob', email: 'bob@demo.com', role: 'student', active: true },
+    { id: 'u_admin', name: 'Super Admin', email: 'admin@demo.com', role: 'admin', active: true, department: 'Administration', lastLogin: now(), createdAt: today(), permissions: ['manage_users', 'manage_exams', 'view_reports', 'send_notifications', 'monitor_exams'] },
+    { id: 'u_admin2', name: 'Security Admin', email: 'sec@demo.com', role: 'admin', active: true, department: 'Security', lastLogin: now(), createdAt: today(), permissions: ['monitor_exams', 'view_reports'] },
+    { id: 'u_teacher1', name: 'Dr. Mathematics', email: 'math@demo.com', role: 'teacher', active: true, department: 'Mathematics', lastLogin: now(), createdAt: today() },
+    { id: 'u_teacher2', name: 'Prof. Physics', email: 'physics@demo.com', role: 'teacher', active: true, department: 'Physics', lastLogin: now(), createdAt: today() },
+    { id: 'u_student1', name: 'Alice Johnson', email: 'alice@demo.com', role: 'student', active: true, department: 'Computer Science', lastLogin: now(), createdAt: today() },
+    { id: 'u_student2', name: 'Bob Williams', email: 'bob@demo.com', role: 'student', active: true, department: 'Computer Science', lastLogin: now(), createdAt: today() },
+    { id: 'u_student3', name: 'Charlie Brown', email: 'charlie@demo.com', role: 'student', active: false, department: 'Physics', lastLogin: '2024-01-15', createdAt: '2024-01-01' },
   ]);
 
 const initQuestions = (): Question[] =>
   loadFromLS<Question[]>('demo_questions', [
-    { id: uid('q_'), subject: 'Math', topic: 'Algebra', difficulty: 'easy', type: 'mcq', text: '2+2 = ?', choices: ['3', '4', '22'], image: null },
-    { id: uid('q_'), subject: 'Physics', topic: 'Motion', difficulty: 'medium', type: 'short', text: 'State Newton\'s 2nd law.', image: null },
-    { id: uid('q_'), subject: 'CS', topic: 'React', difficulty: 'hard', type: 'essay', text: 'Explain the concept of React Hooks.', image: null },
+    { id: uid('q_'), subject: 'Math', topic: 'Algebra', difficulty: 'easy', type: 'mcq', text: 'What is 2+2?', choices: ['3', '4', '22', '5'], correctAnswer: '4', marks: 5, image: null, createdAt: today() },
+    { id: uid('q_'), subject: 'Physics', topic: 'Motion', difficulty: 'medium', type: 'short', text: 'State Newton\'s 2nd law.', correctAnswer: 'F=ma', marks: 10, image: null, createdAt: today() },
+    { id: uid('q_'), subject: 'CS', topic: 'React', difficulty: 'hard', type: 'essay', text: 'Explain the concept of React Hooks.', marks: 25, image: null, createdAt: today() },
+    { id: uid('q_'), subject: 'Math', topic: 'Calculus', difficulty: 'hard', type: 'mcq', text: 'What is the derivative of x²?', choices: ['x', '2x', 'x²', '0'], correctAnswer: '2x', marks: 5, image: null, createdAt: today() },
   ]);
 
-const today = () => new Date().toISOString().slice(0, 10);
 const initExams = (): Exam[] =>
   loadFromLS<Exam[]>('demo_exams', [
     {
       id: 'e_midterm',
-      title: 'Midterm Exam - Math',
-      subject: 'Math',
+      title: 'Midterm Exam - Mathematics',
+      subject: 'Mathematics',
+      category: 'midterm',
+      department: 'Computer Science',
       description: 'Midterm covering algebra and calculus basics',
       date: today(),
       startTime: '09:00',
@@ -113,49 +160,158 @@ const initExams = (): Exam[] =>
       passingMark: 60,
       randomize: true,
       published: true,
-      examinerId: 'u_teacher',
+      status: 'approved',
+      examinerId: 'u_teacher1',
       assignedTo: ['u_student1', 'u_student2'],
+      security: {
+        faceDetection: true,
+        browserLockdown: true,
+        tabSwitchingDetection: true,
+        copyPasteDisabled: true
+      },
+      createdAt: today()
     },
+    {
+      id: 'e_physics',
+      title: 'Physics Final Exam',
+      subject: 'Physics',
+      category: 'final',
+      department: 'Physics',
+      description: 'Comprehensive final examination',
+      date: today(),
+      startTime: '14:00',
+      endTime: '16:30',
+      durationMinutes: 150,
+      totalMarks: 150,
+      passingMark: 75,
+      randomize: true,
+      published: false,
+      status: 'pending',
+      examinerId: 'u_teacher2',
+      assignedTo: ['u_student3'],
+      security: {
+        faceDetection: false,
+        browserLockdown: true,
+        tabSwitchingDetection: true,
+        copyPasteDisabled: true
+      },
+      createdAt: today()
+    }
+  ]);
+
+const initLoginAttempts = (): LoginAttempt[] =>
+  loadFromLS<LoginAttempt[]>('demo_login_attempts', [
+    { id: uid('la_'), userId: 'u_student1', email: 'alice@demo.com', timestamp: now(), ip: generateFakeIP(), success: true, userAgent: 'Chrome/Windows' },
+    { id: uid('la_'), userId: 'u_student2', email: 'bob@demo.com', timestamp: now(), ip: generateFakeIP(), success: true, userAgent: 'Firefox/Mac' },
+    { id: uid('la_'), userId: 'unknown', email: 'hacker@test.com', timestamp: now(), ip: generateFakeIP(), success: false, userAgent: 'Unknown' },
+    { id: uid('la_'), userId: 'unknown', email: 'hacker@test.com', timestamp: now(), ip: generateFakeIP(), success: false, userAgent: 'Unknown' },
+    { id: uid('la_'), userId: 'unknown', email: 'hacker@test.com', timestamp: now(), ip: generateFakeIP(), success: false, userAgent: 'Unknown' },
+  ]);
+
+const initCheatingAlerts = (): CheatingAlert[] =>
+  loadFromLS<CheatingAlert[]>('demo_cheating_alerts', [
+    { id: uid('ca_'), studentId: 'u_student1', studentName: 'Alice Johnson', examId: 'e_midterm', examTitle: 'Midterm Exam - Mathematics', type: 'tab_switch', timestamp: now(), severity: 'medium', resolved: false },
+    { id: uid('ca_'), studentId: 'u_student2', studentName: 'Bob Williams', examId: 'e_midterm', examTitle: 'Midterm Exam - Mathematics', type: 'copy_paste', timestamp: now(), severity: 'high', resolved: false },
+  ]);
+
+const initResults = (): Result[] =>
+  loadFromLS<Result[]>('demo_results', [
+    { id: uid('r_'), studentId: 'u_student1', studentName: 'Alice Johnson', examId: 'e_midterm', examTitle: 'Midterm Exam - Mathematics', score: 85, totalMarks: 100, percentage: 85, grade: 'A', submittedAt: now(), duration: 110 },
+    { id: uid('r_'), studentId: 'u_student2', studentName: 'Bob Williams', examId: 'e_midterm', examTitle: 'Midterm Exam - Mathematics', score: 72, totalMarks: 100, percentage: 72, grade: 'B', submittedAt: now(), duration: 115 },
+    { id: uid('r_'), studentId: 'u_student3', studentName: 'Charlie Brown', examId: 'e_physics', examTitle: 'Physics Final Exam', score: 68, totalMarks: 150, percentage: 45, grade: 'F', submittedAt: now(), duration: 145 },
+  ]);
+
+const initNotifications = (): Notification[] =>
+  loadFromLS<Notification[]>('demo_notifications', [
+    { id: uid('n_'), title: 'System Maintenance', message: 'System will be down for maintenance on Saturday from 2-4 AM', targetRole: 'all', sentBy: 'u_admin', sentAt: now(), read: false },
+    { id: uid('n_'), title: 'New Exam Created', message: 'Physics Final Exam has been created and is pending approval', targetRole: 'admin', sentBy: 'u_teacher2', sentAt: now(), read: true },
   ]);
 
 // -------------------- User Form Component --------------------
-function UserForm({ user, onSave }: { user: User | null; onSave: (u: Omit<User, 'id'>) => void }) {
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [role, setRole] = useState<Role>(user?.role || 'student');
-  const [active, setActive] = useState(user?.active ?? true);
+function UserForm({ user, onSave }: { user: User | null; onSave: (u: Omit<User, 'id' | 'createdAt'>) => void }) {
+  const [state, setState] = useState<Omit<User, 'id' | 'createdAt'>>(() => ({
+    name: user?.name || '',
+    email: user?.email || '',
+    role: user?.role || 'student',
+    active: user?.active ?? true,
+    department: user?.department || '',
+    lastLogin: user?.lastLogin || now(),
+    permissions: user?.permissions || []
+  }));
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    setState(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
+  };
+
+  const handlePermissionChange = (permission: Permission, checked: boolean) => {
+    setState(prev => ({
+      ...prev,
+      permissions: checked 
+        ? [...(prev.permissions || []), permission]
+        : (prev.permissions || []).filter(p => p !== permission)
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email) return alert('Name and Email are required.');
-    onSave({ name, email, role, active });
+    if (!state.name || !state.email) return alert('Name and Email are required.');
+    onSave(state);
   };
+
+  const permissions: Permission[] = ['manage_users', 'manage_exams', 'view_reports', 'send_notifications', 'monitor_exams'];
 
   return (
     <form onSubmit={handleSubmit} className="form">
       <h3>{user ? 'Edit User' : 'Add New User'}</h3>
-      <label>Name: <input value={name} onChange={e => setName(e.target.value)} required /></label>
-      <label>Email: <input type="email" value={email} onChange={e => setEmail(e.target.value)} required /></label>
+      <label>Name: <input name="name" value={state.name} onChange={handleChange} required /></label>
+      <label>Email: <input type="email" name="email" value={state.email} onChange={handleChange} required /></label>
       <label>
         Role:
-        <select value={role} onChange={e => setRole(e.target.value as Role)}>
+        <select name="role" value={state.role} onChange={handleChange}>
           <option value="student">Student</option>
-          <option value="teacher">Teacher / Examiner</option>
+          <option value="teacher">Teacher</option>
           <option value="admin">Admin</option>
         </select>
       </label>
-      <label><input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} /> Active Account</label>
-      <button type="submit">{user ? 'Update User' : 'Create User'}</button>
-      {user && <button type="button" onClick={() => alert('Password reset link sent to ' + user.email)} className="secondary">Reset Password</button>}
+      <label>Department: <input name="department" value={state.department} onChange={handleChange} /></label>
+      <label><input type="checkbox" name="active" checked={state.active} onChange={handleChange} /> Active Account</label>
+      
+      {state.role === 'admin' && (
+        <fieldset>
+          <legend>Admin Permissions</legend>
+          {permissions.map(perm => (
+            <label key={perm} className="permission-checkbox">
+              <input 
+                type="checkbox" 
+                checked={state.permissions?.includes(perm)} 
+                onChange={e => handlePermissionChange(perm, e.target.checked)} 
+              />
+              {perm.replace('_', ' ')}
+            </label>
+          ))}
+        </fieldset>
+      )}
+
+      <div className="form-actions">
+        <button type="submit">{user ? 'Update User' : 'Create User'}</button>
+        {user && <button type="button" onClick={() => alert(`Password reset link sent to ${user.email}`)} className="secondary">Reset Password</button>}
+      </div>
     </form>
   );
 }
 
 // -------------------- Exam Form Component --------------------
-function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; onSave: (e: Omit<Exam, 'id'> | Partial<Exam>) => void }) {
-  const [state, setState] = useState<Omit<Exam, 'id' | 'assignedTo'> & { assignedTo: string[] }>(() => ({
+function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; onSave: (e: Omit<Exam, 'id' | 'createdAt'> | Partial<Exam>) => void }) {
+  const [state, setState] = useState<Omit<Exam, 'id' | 'createdAt'> & { assignedTo: string[] }>(() => ({
     title: exam?.title || '',
     subject: exam?.subject || '',
+    category: exam?.category || 'quiz',
+    department: exam?.department || '',
     description: exam?.description || '',
     date: exam?.date || today(),
     startTime: exam?.startTime || '09:00',
@@ -165,8 +321,15 @@ function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; o
     passingMark: exam?.passingMark || 50,
     randomize: exam?.randomize ?? true,
     published: exam?.published ?? false,
+    status: exam?.status || 'draft',
     examinerId: exam?.examinerId || null,
     assignedTo: exam?.assignedTo || [],
+    security: exam?.security || {
+      faceDetection: true,
+      browserLockdown: true,
+      tabSwitchingDetection: true,
+      copyPasteDisabled: true
+    }
   }));
 
   const students = users.filter(u => u.role === 'student');
@@ -176,6 +339,13 @@ function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; o
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     setState(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : type === 'number' ? Number(value) : value }));
+  };
+
+  const handleSecurityChange = (key: keyof Exam['security'], value: boolean) => {
+    setState(prev => ({
+      ...prev,
+      security: { ...prev.security, [key]: value }
+    }));
   };
 
   const handleAssignmentChange = (id: string, isChecked: boolean) => {
@@ -197,6 +367,15 @@ function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; o
       <div className="form-group-grid">
         <label>Title: <input name="title" value={state.title} onChange={handleChange} required /></label>
         <label>Subject: <input name="subject" value={state.subject} onChange={handleChange} required /></label>
+        <label>Category: 
+          <select name="category" value={state.category} onChange={handleChange}>
+            <option value="quiz">Quiz</option>
+            <option value="midterm">Midterm Exam</option>
+            <option value="final">Final Exam</option>
+            <option value="assignment">Assignment</option>
+          </select>
+        </label>
+        <label>Department: <input name="department" value={state.department} onChange={handleChange} required /></label>
         <label>Date: <input type="date" name="date" value={state.date} onChange={handleChange} required /></label>
         <label>Start Time: <input type="time" name="startTime" value={state.startTime} onChange={handleChange} required /></label>
         <label>End Time: <input type="time" name="endTime" value={state.endTime} onChange={handleChange} required /></label>
@@ -204,7 +383,9 @@ function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; o
         <label>Total Marks: <input type="number" name="totalMarks" value={state.totalMarks} onChange={handleChange} required min="1" /></label>
         <label>Passing Mark: <input type="number" name="passingMark" value={state.passingMark} onChange={handleChange} required min="1" /></label>
       </div>
+      
       <label>Description: <textarea name="description" value={state.description} onChange={handleChange} rows={3} /></label>
+      
       <label>
         Examiner/Invigilator:
         <select name="examinerId" value={state.examinerId || ''} onChange={handleChange}>
@@ -212,6 +393,39 @@ function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; o
           {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
       </label>
+
+      <label>
+        Status:
+        <select name="status" value={state.status} onChange={handleChange}>
+          <option value="draft">Draft</option>
+          <option value="pending">Pending Approval</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </label>
+
+      <fieldset className="security-settings">
+        <legend>Security Settings</legend>
+        <div className="security-grid">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={state.security.faceDetection} onChange={e => handleSecurityChange('faceDetection', e.target.checked)} />
+            Face Detection
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={state.security.browserLockdown} onChange={e => handleSecurityChange('browserLockdown', e.target.checked)} />
+            Browser Lockdown
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={state.security.tabSwitchingDetection} onChange={e => handleSecurityChange('tabSwitchingDetection', e.target.checked)} />
+            Tab Switching Detection
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={state.security.copyPasteDisabled} onChange={e => handleSecurityChange('copyPasteDisabled', e.target.checked)} />
+            Disable Copy/Paste
+          </label>
+        </div>
+      </fieldset>
+
       <div className="form-options">
         <label><input type="checkbox" name="randomize" checked={state.randomize} onChange={handleChange} /> Randomize Questions</label>
         <label><input type="checkbox" name="published" checked={state.published} onChange={handleChange} /> Publish Exam</label>
@@ -227,10 +441,17 @@ function ExamForm({ exam, users, onSave }: { exam: Exam | null; users: User[]; o
             </label>
           ))}
         </div>
-        <div className="hint">Only assigned students will see the exam.</div>
       </fieldset>
 
-      <button type="submit">{exam ? 'Update Exam' : 'Create Exam'}</button>
+      <div className="form-actions">
+        <button type="submit">{exam ? 'Update Exam' : 'Create Exam'}</button>
+        {exam && (
+          <>
+            <button type="button" className="secondary" onClick={() => onSave({ ...exam, status: 'approved' })}>Approve</button>
+            <button type="button" className="danger" onClick={() => onSave({ ...exam, status: 'rejected' })}>Reject</button>
+          </>
+        )}
+      </div>
     </form>
   );
 }
@@ -267,24 +488,31 @@ function NotificationForm({ onSend }: { onSend: (n: { title: string; message: st
   );
 }
 
-
 // -------------------- Main Component --------------------
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>(initUsers);
   const [questions, setQuestions] = useState<Question[]>(initQuestions);
   const [exams, setExams] = useState<Exam[]>(initExams);
+  const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>(initLoginAttempts);
+  const [cheatingAlerts, setCheatingAlerts] = useState<CheatingAlert[]>(initCheatingAlerts);
+  const [results, setResults] = useState<Result[]>(initResults);
+  const [notifications, setNotifications] = useState<Notification[]>(initNotifications);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'exams' | 'questions' | 'monitor' | 'reports' | 'settings' | 'notifications'>('overview');
-
-  // UI states
   const [query, setQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(notifications.filter(n => !n.read).length);
 
+  // Save to localStorage
   useEffect(() => saveToLS('demo_users', users), [users]);
   useEffect(() => saveToLS('demo_questions', questions), [questions]);
   useEffect(() => saveToLS('demo_exams', exams), [exams]);
+  useEffect(() => saveToLS('demo_login_attempts', loginAttempts), [loginAttempts]);
+  useEffect(() => saveToLS('demo_cheating_alerts', cheatingAlerts), [cheatingAlerts]);
+  useEffect(() => saveToLS('demo_results', results), [results]);
+  useEffect(() => saveToLS('demo_notifications', notifications), [notifications]);
 
   // Derived counts
   const counts = useMemo(() => ({
@@ -293,11 +521,47 @@ export default function AdminDashboard() {
     admins: users.filter(u => u.role === 'admin').length,
     exams: exams.length,
     questions: questions.length,
-  }), [users, exams, questions]);
+    activeExams: exams.filter(e => e.published && e.status === 'approved').length,
+    pendingExams: exams.filter(e => e.status === 'pending').length,
+    cheatingAlerts: cheatingAlerts.filter(c => !c.resolved).length,
+    failedLogins: loginAttempts.filter(l => !l.success).length,
+  }), [users, exams, questions, cheatingAlerts, loginAttempts]);
 
-  // -------------------- User management handlers --------------------
-  function addUser(payload: Omit<User, 'id'>) {
-    const u: User = { ...payload, id: uid('u_') };
+  // Performance analytics
+  const performanceSummary = useMemo(() => {
+    const totalStudents = counts.students;
+    const avgScore = results.length > 0 ? results.reduce((sum, r) => sum + r.percentage, 0) / results.length : 0;
+    const passRate = results.length > 0 ? results.filter(r => r.percentage >= 60).length / results.length : 0;
+    
+    const departmentStats = users
+      .filter(u => u.role === 'student')
+      .reduce((acc, user) => {
+        const dept = user.department || 'Unknown';
+        acc[dept] = (acc[dept] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+    const scoreDistribution = {
+      'A (90-100)': results.filter(r => r.percentage >= 90).length,
+      'B (80-89)': results.filter(r => r.percentage >= 80 && r.percentage < 90).length,
+      'C (70-79)': results.filter(r => r.percentage >= 70 && r.percentage < 80).length,
+      'D (60-69)': results.filter(r => r.percentage >= 60 && r.percentage < 70).length,
+      'F (<60)': results.filter(r => r.percentage < 60).length,
+    };
+
+    return {
+      avgScore: Math.round(avgScore),
+      passRate,
+      totalStudents,
+      departmentStats,
+      scoreDistribution,
+      topPerformer: results.length > 0 ? results.reduce((best, curr) => curr.percentage > best.percentage ? curr : best) : null,
+    };
+  }, [users, results]);
+
+  // -------------------- Handlers --------------------
+  function addUser(payload: Omit<User, 'id' | 'createdAt'>) {
+    const u: User = { ...payload, id: uid('u_'), createdAt: today() };
     setUsers(prev => [u, ...prev]);
   }
 
@@ -310,14 +574,8 @@ export default function AdminDashboard() {
     setUsers(prev => prev.filter(u => u.id !== id));
   }
 
-  function resetPassword(id: string) {
-    // FR1.4: Admin must be able to reset user passwords.
-    alert(`Password reset link sent to ${users.find(u => u.id === id)?.email || 'user'}. (Mock action)`);
-  }
-
-  // -------------------- Exam handlers --------------------
-  function createExam(payload: Omit<Exam, 'id'>) {
-    const e: Exam = { ...payload, id: uid('e_') };
+  function createExam(payload: Omit<Exam, 'id' | 'createdAt'>) {
+    const e: Exam = { ...payload, id: uid('e_'), createdAt: today() };
     setExams(prev => [e, ...prev]);
   }
 
@@ -330,9 +588,8 @@ export default function AdminDashboard() {
     setExams(prev => prev.filter(e => e.id !== id));
   }
 
-  // -------------------- Question bank handlers --------------------
-  function addQuestion(q: Omit<Question, 'id'>) {
-    const n = { ...q, id: uid('q_') };
+  function addQuestion(q: Omit<Question, 'id' | 'createdAt'>) {
+    const n = { ...q, id: uid('q_'), createdAt: today() };
     setQuestions(prev => [n, ...prev]);
   }
 
@@ -345,7 +602,32 @@ export default function AdminDashboard() {
     setQuestions(prev => prev.filter(q => q.id !== id));
   }
 
-  // -------------------- Reports export --------------------
+  function resolveCheatingAlert(id: string) {
+    setCheatingAlerts(prev => prev.map(alert => 
+      alert.id === id ? { ...alert, resolved: true } : alert
+    ));
+  }
+
+  function sendNotification({ title, message, targetRole }: { title: string; message: string; targetRole: Role | 'all' }) {
+    const notification: Notification = {
+      id: uid('n_'),
+      title,
+      message,
+      targetRole,
+      sentBy: 'u_admin',
+      sentAt: now(),
+      read: false
+    };
+    setNotifications(prev => [notification, ...prev]);
+    setUnreadNotifications(prev => prev + 1);
+    alert(`Notification sent to ${targetRole}: ${title}`);
+  }
+
+  function markNotificationAsRead(id: string) {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setUnreadNotifications(prev => Math.max(0, prev - 1));
+  }
+
   function exportCSV(data: object[], filename = 'report.csv') {
     if (!data || !data.length) { alert('No data to export'); return; }
     const keys = Object.keys(data[0]);
@@ -363,47 +645,65 @@ export default function AdminDashboard() {
     a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
   }
 
-  // -------------------- Monitoring simulation --------------------
-  const [monitorData, setMonitorData] = useState(() => users.filter(u => u.role === 'student').map(s => ({ id: s.id, name: s.name, online: Math.random() > 0.3, progress: Math.floor(Math.random() * 100), timeLeft: Math.floor(Math.random() * 120), cheatingAlert: Math.random() < 0.1 })));
-
+  // -------------------- Monitoring Simulation --------------------
   useEffect(() => {
-    // Simulate live updates for anti-cheating/progress monitoring every 4s
-    const t = setInterval(() => {
-      setMonitorData(prev => prev.map(p => ({
-        ...p,
-        progress: Math.min(100, p.progress + Math.floor(Math.random() * 10)),
-        timeLeft: Math.max(0, p.timeLeft - Math.floor(Math.random() * 6)),
-        online: Math.random() > 0.2,
-        cheatingAlert: Math.random() < 0.05, // Simulate tab switching/suspicious activity detection
-      })));
-    }, 4000);
-    return () => clearInterval(t);
-  }, []);
+    const interval = setInterval(() => {
+      // Simulate new cheating alerts
+      if (Math.random() < 0.05) {
+        const students = users.filter(u => u.role === 'student' && u.active);
+        if (students.length > 0) {
+          const student = students[Math.floor(Math.random() * students.length)];
+          const activeExams = exams.filter(e => e.published && e.assignedTo.includes(student.id));
+          if (activeExams.length > 0) {
+            const exam = activeExams[Math.floor(Math.random() * activeExams.length)];
+            const types: CheatingAlert['type'][] = ['tab_switch', 'copy_paste', 'multiple_faces', 'unusual_activity'];
+            const newAlert: CheatingAlert = {
+              id: uid('ca_'),
+              studentId: student.id,
+              studentName: student.name,
+              examId: exam.id,
+              examTitle: exam.title,
+              type: types[Math.floor(Math.random() * types.length)],
+              timestamp: now(),
+              severity: Math.random() < 0.3 ? 'high' : Math.random() < 0.5 ? 'medium' : 'low',
+              resolved: false
+            };
+            setCheatingAlerts(prev => [newAlert, ...prev]);
+          }
+        }
+      }
 
-  // -------------------- Simple Analytics --------------------
-  const performanceSummary = useMemo(() => {
-    // Mock distribution/analytics
-    return {
-      avgScore: 72 + Math.floor(Math.random() * 10),
-      passRate: 0.78,
-      byDifficulty: { easy: 0.45, medium: 0.35, hard: 0.2 },
-    };
-  }, [exams, questions]); // Recalculate if exams/questions change
+      // Simulate login attempts
+      if (Math.random() < 0.1) {
+        const newAttempt: LoginAttempt = {
+          id: uid('la_'),
+          userId: 'unknown',
+          email: `suspicious${Math.floor(Math.random() * 1000)}@test.com`,
+          timestamp: now(),
+          ip: generateFakeIP(),
+          success: Math.random() < 0.3,
+          userAgent: Math.random() < 0.5 ? 'Chrome/Windows' : 'Unknown'
+        };
+        setLoginAttempts(prev => [newAttempt, ...prev.slice(0, 49)]);
+      }
+    }, 5000);
 
-  // -------------------- Notifications --------------------
-  function sendNotification({ title, message, targetRole }: { title: string; message: string; targetRole: Role | 'all' }) {
-    // Mock: show an alert and pretend we pushed message
-    alert(`Notification sent to ${targetRole}: ${title}\n\n${message}`);
-  }
+    return () => clearInterval(interval);
+  }, [users, exams]);
 
-  // -------------------- UI pieces --------------------
-  function SmallStat({ label, value, icon }: { label: string; value: string | number; icon: string }) {
+  // -------------------- UI Components --------------------
+  function StatCard({ label, value, icon, trend }: { label: string; value: string | number; icon: string; trend?: number }) {
     return (
-      <div className="stat">
+      <div className="stat-card">
         <div className="stat-icon">{icon}</div>
-        <div>
+        <div className="stat-content">
           <div className="stat-value">{value}</div>
           <div className="stat-label">{label}</div>
+          {trend !== undefined && (
+            <div className={`stat-trend ${trend > 0 ? 'positive' : 'negative'}`}>
+              {trend > 0 ? '↗' : '↘'} {Math.abs(trend)}%
+            </div>
+          )}
         </div>
       </div>
     );
@@ -413,69 +713,258 @@ export default function AdminDashboard() {
   return (
     <div className="admin-app">
       <aside className="sidebar">
-        <div className="brand">ExamMaster 🎓</div>
+        <div className="brand">ExamMaster Admin 🎓</div>
+        <div className="user-info">
+          <div className="user-avatar">SA</div>
+          <div className="user-details">
+            <strong>Super Admin</strong>
+            <small>Administrator</small>
+          </div>
+        </div>
         <nav>
-          <button className={activeTab==='overview'? 'active':''} onClick={() => setActiveTab('overview')}>📊 Overview</button>
-          <button className={activeTab==='users'? 'active':''} onClick={() => setActiveTab('users')}>👥 Users</button>
-          <button className={activeTab==='exams'? 'active':''} onClick={() => setActiveTab('exams')}>📝 Exams</button>
-          <button className={activeTab==='questions'? 'active':''} onClick={() => setActiveTab('questions')}>📚 Question Bank</button>
-          <button className={activeTab==='monitor'? 'active':''} onClick={() => setActiveTab('monitor')}>💻 Monitor Live</button>
-          <button className={activeTab==='reports'? 'active':''} onClick={() => setActiveTab('reports')}>📈 Reports</button>
-          <button className={activeTab==='notifications'? 'active':''} onClick={() => setActiveTab('notifications')}>🔔 Notifications</button>
-          <button className={activeTab==='settings'? 'active':''} onClick={() => setActiveTab('settings')}>⚙️ Settings & Security</button>
+          <button className={activeTab==='overview'? 'active':''} onClick={() => setActiveTab('overview')}>
+            📊 Dashboard
+          </button>
+          <button className={activeTab==='users'? 'active':''} onClick={() => setActiveTab('users')}>
+            👥 User Management
+            <span className="badge">{counts.admins + counts.teachers + counts.students}</span>
+          </button>
+          <button className={activeTab==='exams'? 'active':''} onClick={() => setActiveTab('exams')}>
+            📝 Exam Management
+            {counts.pendingExams > 0 && <span className="badge warn">{counts.pendingExams}</span>}
+          </button>
+          <button className={activeTab==='questions'? 'active':''} onClick={() => setActiveTab('questions')}>
+            📚 Question Bank
+          </button>
+          <button className={activeTab==='monitor'? 'active':''} onClick={() => setActiveTab('monitor')}>
+            💻 Live Monitoring
+            {counts.cheatingAlerts > 0 && <span className="badge danger">{counts.cheatingAlerts}</span>}
+          </button>
+          <button className={activeTab==='reports'? 'active':''} onClick={() => setActiveTab('reports')}>
+            📈 Reports & Analytics
+          </button>
+          <button className={activeTab==='notifications'? 'active':''} onClick={() => setActiveTab('notifications')}>
+            🔔 Notifications
+            {unreadNotifications > 0 && <span className="badge">{unreadNotifications}</span>}
+          </button>
+          <button className={activeTab==='settings'? 'active':''} onClick={() => setActiveTab('settings')}>
+            ⚙️ Settings
+          </button>
         </nav>
-        <div className="sidebar-footer">Logged in as <b>Super Admin</b></div>
+        <div className="sidebar-footer">
+          <div className="system-status">
+            <span className="status-dot online"></span>
+            System Online
+          </div>
+          <small>v2.1.0</small>
+        </div>
       </aside>
 
       <main className="main">
         <header className="topbar">
           <div className="search">
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search users, exams, questions..." />
+            <input 
+              value={query} 
+              onChange={e => setQuery(e.target.value)} 
+              placeholder="Search users, exams, questions..." 
+            />
+            <span className="search-icon">🔍</span>
           </div>
           <div className="actions">
-            <button onClick={() => { setSelectedUser(null); setActiveTab('users'); setShowModal(true); }}>+ Add User</button>
-            <button onClick={() => { setSelectedExam(null); setActiveTab('exams'); setShowModal(true); }}>+ New Exam</button>
+            <button className="btn-primary" onClick={() => { setSelectedUser(null); setActiveTab('users'); setShowModal(true); }}>
+              + Add User
+            </button>
+            <button className="btn-primary" onClick={() => { setSelectedExam(null); setActiveTab('exams'); setShowModal(true); }}>
+              + Create Exam
+            </button>
+            <div className="notification-bell">
+              <span>🔔</span>
+              {unreadNotifications > 0 && <span className="notification-count">{unreadNotifications}</span>}
+            </div>
           </div>
         </header>
 
         <div className="content">
+          {/* Dashboard Overview */}
           {activeTab === 'overview' && (
             <section className="animate-in">
-              <h2>Dashboard Overview</h2>
+              <div className="page-header">
+                <h2>Dashboard Overview</h2>
+                <div className="time-display">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+              </div>
+              
+              <div className="stats-grid">
+                <StatCard label="Total Students" value={counts.students} icon="👨‍🎓" trend={2.5} />
+                <StatCard label="Active Teachers" value={counts.teachers} icon="👩‍🏫" trend={1.2} />
+                <StatCard label="Active Exams" value={counts.activeExams} icon="🚀" trend={5.7} />
+                <StatCard label="Pending Approvals" value={counts.pendingExams} icon="⏳" />
+                <StatCard label="Cheating Alerts" value={counts.cheatingAlerts} icon="⚠️" />
+                <StatCard label="Avg Score" value={`${performanceSummary.avgScore}%`} icon="📊" trend={performanceSummary.avgScore > 70 ? 3.2 : -1.5} />
+              </div>
+
               <div className="grid">
-                <div className="card stat-summary">
-                  <h3>System Status</h3>
-                  <div className="stats">
-                    <SmallStat label="Students" value={counts.students} icon="👨‍🎓" />
-                    <SmallStat label="Teachers" value={counts.teachers} icon="👩‍🏫" />
-                    <SmallStat label="Admins" value={counts.admins} icon="👑" />
-                    <SmallStat label="Active Exams" value={exams.filter(e => e.published).length} icon="🚀" />
-                    <SmallStat label="Total Questions" value={counts.questions} icon="❓" />
-                  </div>
-                  <div className="analytics">
-                    <h4>Overall Performance Snapshot</h4>
-                    <div className="mini-chart">
-                      <div className="bar" style={{width: `${performanceSummary.avgScore}%`}} title={`Avg ${performanceSummary.avgScore}%`}></div>
-                    </div>
-                    <div className="meta">Avg Score: **{performanceSummary.avgScore}%** — Pass Rate: **{(performanceSummary.passRate*100).toFixed(0)}%**</div>
+                <div className="card">
+                  <h3>Recent Cheating Alerts</h3>
+                  <div className="alert-list">
+                    {cheatingAlerts.filter(a => !a.resolved).slice(0, 5).map(alert => (
+                      <div key={alert.id} className={`alert-item ${alert.severity}`}>
+                        <div className="alert-header">
+                          <strong>{alert.studentName}</strong>
+                          <span className={`severity-badge ${alert.severity}`}>{alert.severity}</span>
+                        </div>
+                        <div className="alert-details">
+                          {alert.examTitle} • {alert.type.replace('_', ' ')}
+                        </div>
+                        <div className="alert-time">{new Date(alert.timestamp).toLocaleTimeString()}</div>
+                        <button className="btn-sm" onClick={() => resolveCheatingAlert(alert.id)}>Resolve</button>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="card large">
-                  <h3>Upcoming & Active Exams</h3>
-                  <table className="table">
-                    <thead><tr><th>Title</th><th>Subject</th><th>Date</th><th>Duration</th><th>Published</th><th>Actions</th></tr></thead>
+                <div className="card">
+                  <h3>Recent Login Attempts</h3>
+                  <table className="table compact">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>IP</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                      </tr>
+                    </thead>
                     <tbody>
-                      {exams.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map(ex => (
-                        <tr key={ex.id}>
-                          <td>{ex.title}</td>
-                          <td>{ex.subject}</td>
-                          <td>{ex.date}</td>
-                          <td>{ex.durationMinutes}m</td>
-                          <td className={ex.published ? 'status-active' : 'status-inactive'}>{ex.published ? 'Published' : 'Draft'}</td>
+                      {loginAttempts.slice(0, 5).map(attempt => (
+                        <tr key={attempt.id}>
+                          <td>{attempt.email}</td>
+                          <td>{attempt.ip}</td>
                           <td>
-                            <button onClick={() => { setSelectedExam(ex); setShowModal(true); }}>Edit</button>
-                            <button onClick={() => updateExam(ex.id, { published: !ex.published })}>{ex.published? 'Unpublish':'Publish'}</button>
+                            <span className={`status-badge ${attempt.success ? 'success' : 'danger'}`}>
+                              {attempt.success ? 'Success' : 'Failed'}
+                            </span>
+                          </td>
+                          <td>{new Date(attempt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="card">
+                  <h3>Performance Summary</h3>
+                  <div className="performance-stats">
+                    <div className="performance-metric">
+                      <div className="metric-label">Average Score</div>
+                      <div className="metric-value">{performanceSummary.avgScore}%</div>
+                      <div className="metric-progress">
+                        <div className="progress-bar" style={{ width: `${performanceSummary.avgScore}%` }}></div>
+                      </div>
+                    </div>
+                    <div className="performance-metric">
+                      <div className="metric-label">Pass Rate</div>
+                      <div className="metric-value">{(performanceSummary.passRate * 100).toFixed(1)}%</div>
+                      <div className="metric-progress">
+                        <div className="progress-bar" style={{ width: `${performanceSummary.passRate * 100}%` }}></div>
+                      </div>
+                    </div>
+                    {performanceSummary.topPerformer && (
+                      <div className="top-performer">
+                        <div className="metric-label">Top Performer</div>
+                        <div className="performer-info">
+                          <strong>{performanceSummary.topPerformer.studentName}</strong>
+                          <span>{performanceSummary.topPerformer.percentage}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="card">
+                  <h3>Upcoming Exams</h3>
+                  <div className="exam-list">
+                    {exams.filter(e => e.status === 'approved').slice(0, 3).map(exam => (
+                      <div key={exam.id} className="exam-item">
+                        <div className="exam-title">{exam.title}</div>
+                        <div className="exam-details">
+                          <span>{exam.date} • {exam.startTime}</span>
+                          <span className={`status-badge ${exam.published ? 'success' : 'warning'}`}>
+                            {exam.published ? 'Published' : 'Draft'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* User Management */}
+          {activeTab === 'users' && (
+            <section className="animate-in">
+              <div className="page-header">
+                <h2>👥 User Management</h2>
+                <div className="header-actions">
+                  <button className="btn-primary" onClick={() => { setSelectedUser(null); setShowModal(true); }}>
+                    + Add New User
+                  </button>
+                  <button className="btn-secondary" onClick={() => exportCSV(users, 'users.csv')}>
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="table-responsive">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.filter(u => 
+                        u.name.toLowerCase().includes(query.toLowerCase()) || 
+                        u.email.toLowerCase().includes(query.toLowerCase())
+                      ).map(user => (
+                        <tr key={user.id}>
+                          <td>
+                            <div className="user-cell">
+                              <div className="user-avatar small">{user.name.charAt(0)}</div>
+                              {user.name}
+                            </div>
+                          </td>
+                          <td>{user.email}</td>
+                          <td>
+                            <span className={`role-badge ${user.role}`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td>{user.department || '-'}</td>
+                          <td>
+                            <span className={`status-badge ${user.active ? 'success' : 'danger'}`}>
+                              {user.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="btn-sm" onClick={() => { setSelectedUser(user); setShowModal(true); }}>
+                                Edit
+                              </button>
+                              <button className="btn-sm warn" onClick={() => alert(`Password reset link sent to ${user.email}`)}>
+                                Reset PW
+                              </button>
+                              <button className="btn-sm danger" onClick={() => deleteUser(user.id)}>
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -486,189 +975,520 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {activeTab === 'users' && (
-            <section className="animate-in">
-              <h2>👥 User Management</h2>
-              <div className="card">
-                <div className="toolbar">
-                  <div>**{users.length}** Total Users</div>
-                  <div>
-                    <button onClick={() => { setSelectedUser(null); setShowModal(true); }}>+ Add User (FR2.1)</button>
-                    <button onClick={() => exportCSV(users, 'users.csv')}>Export CSV</button>
-                  </div>
-                </div>
-                <table className="table">
-                  <thead><tr><th>Name</th><th>Email</th><th>Role (FR2.4)</th><th>Active</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    {users.filter(u => u.name.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase())).map(u => (
-                      <tr key={u.id} className="animate-row">
-                        <td>{u.name}</td>
-                        <td>{u.email}</td>
-                        <td className={`role-${u.role}`}>{u.role}</td>
-                        <td>{u.active ? 'Yes':'No'}</td>
-                        <td>
-                          <button onClick={() => { setSelectedUser(u); setShowModal(true); }}>Edit (FR2.2)</button>
-                          <button className="warn" onClick={() => resetPassword(u.id)}>Reset PW (FR1.4)</button>
-                          <button className="danger" onClick={() => deleteUser(u.id)}>Delete (FR2.3)</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
+          {/* Exam Management */}
           {activeTab === 'exams' && (
             <section className="animate-in">
-              <h2>📝 Exam Management</h2>
-              <div className="card">
-                <div className="toolbar">
-                  <div>**{exams.length}** Total Exams</div>
-                  <div>
-                    <button onClick={() => { setSelectedExam(null); setShowModal(true); }}>+ Create Exam (FR3.1)</button>
-                    <button onClick={() => exportCSV(exams as unknown as object[], 'exams.csv')}>Export CSV</button>
-                  </div>
+              <div className="page-header">
+                <h2>📝 Exam Management</h2>
+                <div className="header-actions">
+                  <button className="btn-primary" onClick={() => { setSelectedExam(null); setShowModal(true); }}>
+                    + Create Exam
+                  </button>
                 </div>
-                <table className="table">
-                  <thead><tr><th>Title</th><th>Date/Time</th><th>Duration</th><th>Random</th><th>Published (FR3.4)</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    {exams.filter(e => e.title.toLowerCase().includes(query.toLowerCase()) || e.subject.toLowerCase().includes(query.toLowerCase())).map(ex => (
-                      <tr key={ex.id} className="animate-row">
-                        <td>{ex.title}</td>
-                        <td>{ex.date} @ {ex.startTime}</td>
-                        <td>{ex.durationMinutes}m / {ex.totalMarks} Marks</td>
-                        <td>{ex.randomize ? 'Yes' : 'No'}</td>
-                        <td className={ex.published ? 'status-active' : 'status-inactive'}>{ex.published ? 'Yes' : 'No'}</td>
-                        <td>
-                          <button onClick={() => { setSelectedExam(ex); setShowModal(true); }}>Edit (FR3.2)</button>
-                          <button onClick={() => updateExam(ex.id, { published: !ex.published })}>{ex.published? 'Unpublish' : 'Publish'}</button>
-                          <button className="danger" onClick={() => deleteExam(ex.id)}>Delete (FR3.3)</button>
-                        </td>
+              </div>
+
+              <div className="card">
+                <div className="tabs">
+                  <button className="tab active">All Exams ({exams.length})</button>
+                  <button className="tab">Pending ({exams.filter(e => e.status === 'pending').length})</button>
+                  <button className="tab">Approved ({exams.filter(e => e.status === 'approved').length})</button>
+                  <button className="tab">Published ({exams.filter(e => e.published).length})</button>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Department</th>
+                        <th>Date/Time</th>
+                        <th>Status</th>
+                        <th>Security</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {exams.filter(e => 
+                        e.title.toLowerCase().includes(query.toLowerCase()) || 
+                        e.subject.toLowerCase().includes(query.toLowerCase())
+                      ).map(exam => (
+                        <tr key={exam.id}>
+                          <td>
+                            <div className="exam-title-cell">
+                              <strong>{exam.title}</strong>
+                              <small>{exam.subject}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`category-badge ${exam.category}`}>
+                              {exam.category}
+                            </span>
+                          </td>
+                          <td>{exam.department}</td>
+                          <td>
+                            {exam.date} @ {exam.startTime}
+                            <br/>
+                            <small>{exam.durationMinutes} mins</small>
+                          </td>
+                          <td>
+                            <span className={`status-badge ${exam.status}`}>
+                              {exam.status}
+                            </span>
+                            {exam.published && <span className="status-badge success">Published</span>}
+                          </td>
+                          <td>
+                            <div className="security-icons">
+                              {exam.security.faceDetection && <span title="Face Detection">👁️</span>}
+                              {exam.security.browserLockdown && <span title="Browser Lockdown">🔒</span>}
+                              {exam.security.tabSwitchingDetection && <span title="Tab Switching Detection">🔍</span>}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="btn-sm" onClick={() => { setSelectedExam(exam); setShowModal(true); }}>
+                                Edit
+                              </button>
+                              <button className="btn-sm secondary" onClick={() => updateExam(exam.id, { published: !exam.published })}>
+                                {exam.published ? 'Unpublish' : 'Publish'}
+                              </button>
+                              {exam.status === 'pending' && (
+                                <>
+                                  <button className="btn-sm success" onClick={() => updateExam(exam.id, { status: 'approved' })}>
+                                    Approve
+                                  </button>
+                                  <button className="btn-sm danger" onClick={() => updateExam(exam.id, { status: 'rejected' })}>
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           )}
 
+          {/* Question Bank */}
           {activeTab === 'questions' && (
             <section className="animate-in">
-              <h2>📚 Question Bank Management</h2>
-              <div className="card">
-                <div className="toolbar">
-                  <div>**{questions.length}** Total Questions</div>
-                  <div>
-                    <button onClick={() => {
-                      const sample: Omit<Question, 'id'> = { subject: 'New', topic: 'General', difficulty: 'easy', type: 'mcq', text: 'New Question Text...', choices: ['A','B','C'], image: null };
-                      addQuestion(sample); // Simulate FR4.1
-                    }}>+ Add Sample Q</button>
-                    <button onClick={() => exportCSV(questions as unknown as object[], 'questions.csv')}>Export CSV</button>
-                  </div>
+              <div className="page-header">
+                <h2>📚 Question Bank</h2>
+                <div className="header-actions">
+                  <button className="btn-primary" onClick={() => {
+                    const sample: Omit<Question, 'id' | 'createdAt'> = { 
+                      subject: 'New', 
+                      topic: 'General', 
+                      difficulty: 'easy', 
+                      type: 'mcq', 
+                      text: 'New Question Text...', 
+                      choices: ['A', 'B', 'C', 'D'], 
+                      correctAnswer: 'A',
+                      marks: 5,
+                      image: null 
+                    };
+                    addQuestion(sample);
+                  }}>
+                    + Add Question
+                  </button>
                 </div>
-                <table className="table">
-                  <thead><tr><th>Subject (FR4.4)</th><th>Topic</th><th>Type</th><th>Difficulty</th><th>Text</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    {questions.filter(q => q.text.toLowerCase().includes(query.toLowerCase()) || q.subject.toLowerCase().includes(query.toLowerCase())).map(q => (
-                      <tr key={q.id} className="animate-row">
-                        <td>{q.subject}</td>
-                        <td>{q.topic}</td>
-                        <td className={`q-type-${q.type}`}>{q.type.toUpperCase()}</td>
-                        <td>{q.difficulty}</td>
-                        <td className="q-text">{q.text.substring(0, 40)}...</td>
-                        <td>
-                          <button onClick={() => { const newText = prompt('Edit question text (FR4.2)', q.text); if (newText) updateQuestion(q.id, { text: newText }); }}>Edit</button>
-                          <button className="danger" onClick={() => deleteQuestion(q.id)}>Delete (FR4.3)</button>
-                        </td>
+              </div>
+
+              <div className="card">
+                <div className="filters">
+                  <select>
+                    <option>All Subjects</option>
+                    <option>Math</option>
+                    <option>Physics</option>
+                    <option>CS</option>
+                  </select>
+                  <select>
+                    <option>All Difficulty</option>
+                    <option>Easy</option>
+                    <option>Medium</option>
+                    <option>Hard</option>
+                  </select>
+                  <select>
+                    <option>All Types</option>
+                    <option>MCQ</option>
+                    <option>Short Answer</option>
+                    <option>Essay</option>
+                  </select>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Question</th>
+                        <th>Subject</th>
+                        <th>Topic</th>
+                        <th>Type</th>
+                        <th>Difficulty</th>
+                        <th>Marks</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {questions.filter(q => 
+                        q.text.toLowerCase().includes(query.toLowerCase()) || 
+                        q.subject.toLowerCase().includes(query.toLowerCase())
+                      ).map(question => (
+                        <tr key={question.id}>
+                          <td>
+                            <div className="question-text">{question.text.substring(0, 80)}...</div>
+                          </td>
+                          <td>{question.subject}</td>
+                          <td>{question.topic}</td>
+                          <td>
+                            <span className={`type-badge ${question.type}`}>
+                              {question.type.toUpperCase()}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`difficulty-badge ${question.difficulty}`}>
+                              {question.difficulty}
+                            </span>
+                          </td>
+                          <td>{question.marks}</td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="btn-sm" onClick={() => {
+                                const newText = prompt('Edit question text', question.text);
+                                if (newText) updateQuestion(question.id, { text: newText });
+                              }}>
+                                Edit
+                              </button>
+                              <button className="btn-sm danger" onClick={() => deleteQuestion(question.id)}>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           )}
 
+          {/* Live Monitoring */}
           {activeTab === 'monitor' && (
             <section className="animate-in">
-              <h2>💻 Live Exam Monitoring (FR6.1)</h2>
-              <div className="card">
-                <div className="monitor-list">
-                  {monitorData.map(s => (
-                    <div key={s.id} className={`monitor-card ${s.online ? 'online' : 'offline'} ${s.cheatingAlert ? 'alert' : ''}`}>
-                      <div className="m-header">
-                        <b>{s.name}</b> {s.online ? <span className="dot"/> : <span className="dot off"/>}
-                        {s.cheatingAlert && <span className="m-alert">⚠️ Anti-Cheating Alert (FR6.2)</span>}
-                      </div>
-                      <div className="meter"><div className="meter-fill" style={{width: `${s.progress}%`}}></div></div>
-                      <div className="m-meta">Progress: **{s.progress}%** • Time left: **{s.timeLeft}m**</div>
-                      <div className="m-actions">
-                        <button onClick={() => alert('Force submit for ' + s.name)}>Force Submit</button>
-                        <button onClick={() => alert('Flagged ' + s.name)} className="danger">Flag Suspicious</button>
-                      </div>
-                    </div>
-                  ))}
+              <div className="page-header">
+                <h2>💻 Live Exam Monitoring</h2>
+                <div className="header-actions">
+                  <button className="btn-primary" onClick={() => alert('Starting live monitoring session...')}>
+                    🔴 Start Monitoring
+                  </button>
                 </div>
-                <div className="hint">Data simulates real-time monitoring of progress and anti-cheating detections (tab switching, etc.).</div>
+              </div>
+
+              <div className="card">
+                <div className="monitor-header">
+                  <h3>Active Exam Sessions</h3>
+                  <div className="monitor-stats">
+                    <span className="stat">👁️ {counts.cheatingAlerts} Active Alerts</span>
+                    <span className="stat">👥 {counts.students} Students Online</span>
+                    <span className="stat">📊 {performanceSummary.avgScore}% Avg Progress</span>
+                  </div>
+                </div>
+
+                <div className="monitor-grid">
+                  {users.filter(u => u.role === 'student' && u.active).map(student => {
+                    const studentExams = exams.filter(e => e.assignedTo.includes(student.id) && e.published);
+                    const studentAlerts = cheatingAlerts.filter(a => a.studentId === student.id && !a.resolved);
+                    const studentResult = results.find(r => r.studentId === student.id);
+                    const isOnline = Math.random() > 0.3;
+                    const progress = Math.floor(Math.random() * 100);
+                    
+                    return (
+                      <div key={student.id} className={`monitor-card ${isOnline ? 'online' : 'offline'} ${studentAlerts.length > 0 ? 'alert' : ''}`}>
+                        <div className="monitor-card-header">
+                          <div className="student-info">
+                            <div className="student-avatar">{student.name.charAt(0)}</div>
+                            <div>
+                              <strong>{student.name}</strong>
+                              <small>{student.department}</small>
+                            </div>
+                          </div>
+                          <div className="student-status">
+                            <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}></span>
+                            {isOnline ? 'Online' : 'Offline'}
+                          </div>
+                        </div>
+
+                        {isOnline && studentExams.length > 0 && (
+                          <>
+                            <div className="exam-info">
+                              <div className="exam-title">{studentExams[0].title}</div>
+                              <div className="progress-bar">
+                                <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                              </div>
+                              <div className="progress-text">Progress: {progress}%</div>
+                            </div>
+
+                            {studentAlerts.length > 0 && (
+                              <div className="alerts-section">
+                                {studentAlerts.map(alert => (
+                                  <div key={alert.id} className="alert-banner">
+                                    ⚠️ {alert.type.replace('_', ' ')} ({alert.severity})
+                                    <button className="btn-sm" onClick={() => resolveCheatingAlert(alert.id)}>Resolve</button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="monitor-actions">
+                              <button className="btn-sm" onClick={() => alert(`Force submit for ${student.name}`)}>
+                                Force Submit
+                              </button>
+                              <button className="btn-sm warn" onClick={() => alert(`Warning sent to ${student.name}`)}>
+                                Send Warning
+                              </button>
+                              <button className="btn-sm danger" onClick={() => alert(`${student.name} flagged for review`)}>
+                                Flag Review
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </section>
           )}
 
+          {/* Reports & Analytics */}
           {activeTab === 'reports' && (
             <section className="animate-in">
-              <h2>📈 Results & Reports (Manage Results and Analytics)</h2>
-              <div className="card">
-                <div className="reports-grid">
-                  <div className="chart-card">
-                    <h4>Score Distribution</h4>
-                    <div className="bars">
-                      <div className="bar-item"><div className="bar-fill" style={{height: '60%'}}></div><small>0-50</small></div>
-                      <div className="bar-item"><div className="bar-fill" style={{height: '80%'}}></div><small>51-70</small></div>
-                      <div className="bar-item"><div className="bar-fill" style={{height: '50%'}}></div><small>71-85</small></div>
-                      <div className="bar-item"><div className="bar-fill" style={{height: '30%'}}></div><small>86-100</small></div>
+              <div className="page-header">
+                <h2>📈 Reports & Analytics</h2>
+                <div className="header-actions">
+                  <button className="btn-primary" onClick={() => exportCSV(results, 'results.csv')}>
+                    📥 Export Results
+                  </button>
+                  <button className="btn-secondary" onClick={() => exportJSON(results, 'analytics.json')}>
+                    📊 Export Analytics
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid">
+                <div className="card">
+                  <h3>Performance Analytics</h3>
+                  <div className="chart-container">
+                    <div className="chart-title">Score Distribution</div>
+                    <div className="bar-chart">
+                      {Object.entries(performanceSummary.scoreDistribution).map(([range, count]) => (
+                        <div key={range} className="bar-item">
+                          <div className="bar-label">{range}</div>
+                          <div className="bar-track">
+                            <div 
+                              className="bar-fill" 
+                              style={{ 
+                                width: `${(count / results.length) * 100}%`,
+                                backgroundColor: range.includes('A') ? '#10b981' : 
+                                               range.includes('B') ? '#3b82f6' : 
+                                               range.includes('C') ? '#f59e0b' : 
+                                               range.includes('D') ? '#f97316' : '#ef4444'
+                              }}
+                            ></div>
+                          </div>
+                          <div className="bar-value">{count}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
+                </div>
 
-                  <div className="report-actions">
-                    <h4>Export Reports (PDF/Excel/CSV)</h4>
-                    <button onClick={() => exportCSV(users as unknown as object[], 'users.csv')}>Export User List (CSV)</button>
-                    <button onClick={() => exportCSV(exams as unknown as object[], 'exam_summary.csv')}>Exam Performance (CSV)</button>
-                    <button onClick={() => exportJSON([{ summary: performanceSummary }], 'analytics.json')}>Analytics Data (JSON)</button>
-                    <div className="hint">PDF / Excel export requires external libraries (not included).</div>
+                <div className="card">
+                  <h3>Department Statistics</h3>
+                  <div className="department-stats">
+                    {Object.entries(performanceSummary.departmentStats).map(([dept, count]) => (
+                      <div key={dept} className="department-item">
+                        <div className="dept-name">{dept}</div>
+                        <div className="dept-count">{count} students</div>
+                        <div className="dept-progress">
+                          <div 
+                            className="progress-bar" 
+                            style={{ width: `${(count / counts.students) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card">
+                  <h3>Recent Results</h3>
+                  <div className="table-responsive">
+                    <table className="table compact">
+                      <thead>
+                        <tr>
+                          <th>Student</th>
+                          <th>Exam</th>
+                          <th>Score</th>
+                          <th>Grade</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.slice(0, 8).map(result => (
+                          <tr key={result.id}>
+                            <td>{result.studentName}</td>
+                            <td>{result.examTitle}</td>
+                            <td>
+                              <div className="score-cell">
+                                {result.score}/{result.totalMarks}
+                                <span className="percentage">({result.percentage}%)</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`grade-badge ${result.grade}`}>
+                                {result.grade}
+                              </span>
+                            </td>
+                            <td>{new Date(result.submittedAt).toLocaleDateString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
             </section>
           )}
 
+          {/* Notifications */}
           {activeTab === 'notifications' && (
             <section className="animate-in">
-              <h2>🔔 Communication & Notifications</h2>
-              <div className="card">
-                <h3>Send Notification</h3>
-                <NotificationForm onSend={sendNotification} />
-                <div className="notice">Use to send exam reminders, result announcements, or general system updates.</div>
+              <div className="page-header">
+                <h2>🔔 Notifications</h2>
+              </div>
+
+              <div className="grid">
+                <div className="card">
+                  <h3>Send New Notification</h3>
+                  <NotificationForm onSend={sendNotification} />
+                </div>
+
+                <div className="card">
+                  <h3>Notification History</h3>
+                  <div className="notification-list">
+                    {notifications.map(notification => (
+                      <div key={notification.id} className={`notification-item ${notification.read ? 'read' : 'unread'}`}>
+                        <div className="notification-header">
+                          <strong>{notification.title}</strong>
+                          {!notification.read && (
+                            <button className="btn-xs" onClick={() => markNotificationAsRead(notification.id)}>
+                              Mark Read
+                            </button>
+                          )}
+                        </div>
+                        <div className="notification-body">
+                          {notification.message}
+                        </div>
+                        <div className="notification-footer">
+                          <small>To: {notification.targetRole}</small>
+                          <small>{new Date(notification.sentAt).toLocaleString()}</small>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </section>
           )}
 
+          {/* Settings */}
           {activeTab === 'settings' && (
             <section className="animate-in">
-              <h2>⚙️ System Management & Security (FR1.4, FR2.4, Policies, Backup)</h2>
-              <div className="card">
-                <h3>System Settings & Security</h3>
-                <div className="settings-grid">
-                  <label className="animated-checkbox"><input type="checkbox" defaultChecked /> Enable camera monitoring (Security Rule)</label>
-                  <label className="animated-checkbox"><input type="checkbox" defaultChecked /> **Enforce Policies**: IP change detection</label>
-                  <label className="animated-checkbox"><input type="checkbox" defaultChecked /> **Backup & Security**: Auto database backups</label>
-                  <label className="animated-checkbox"><input type="checkbox" defaultChecked /> **Enforce Policies**: Password complexity</label>
-                  <label className="animated-checkbox"><input type="checkbox" defaultChecked /> Enable Auto-Save Answers (Student-Side Rule)</label>
+              <div className="page-header">
+                <h2>⚙️ System Settings & Security</h2>
+              </div>
+
+              <div className="grid">
+                <div className="card">
+                  <h3>Security Settings</h3>
+                  <div className="settings-list">
+                    <div className="setting-item">
+                      <label>
+                        <input type="checkbox" defaultChecked />
+                        Enable Face Detection
+                      </label>
+                      <small>Uses webcam to verify student identity</small>
+                    </div>
+                    <div className="setting-item">
+                      <label>
+                        <input type="checkbox" defaultChecked />
+                        Browser Lockdown Mode
+                      </label>
+                      <small>Prevents switching tabs or opening new windows</small>
+                    </div>
+                    <div className="setting-item">
+                      <label>
+                        <input type="checkbox" defaultChecked />
+                        Detect Tab Switching
+                      </label>
+                      <small>Flags students who switch tabs during exam</small>
+                    </div>
+                    <div className="setting-item">
+                      <label>
+                        <input type="checkbox" defaultChecked />
+                        Disable Copy/Paste
+                      </label>
+                      <small>Prevents copying questions or answers</small>
+                    </div>
+                    <div className="setting-item">
+                      <label>
+                        <input type="checkbox" defaultChecked />
+                        IP Change Detection
+                      </label>
+                      <small>Flags suspicious IP changes during exam</small>
+                    </div>
+                  </div>
                 </div>
-                <div className="security-note">Role & Permissions logic is managed via User Forms (FR2.4). Configure JWT expiry, and other complex rules in the backend.</div>
+
+                <div className="card">
+                  <h3>System Configuration</h3>
+                  <div className="settings-form">
+                    <div className="form-group">
+                      <label>Auto Backup Frequency</label>
+                      <select>
+                        <option>Daily</option>
+                        <option>Weekly</option>
+                        <option>Monthly</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Session Timeout (minutes)</label>
+                      <input type="number" defaultValue="30" min="5" max="120" />
+                    </div>
+                    <div className="form-group">
+                      <label>Maximum Login Attempts</label>
+                      <input type="number" defaultValue="5" min="1" max="10" />
+                    </div>
+                    <div className="form-group">
+                      <label>Password Policy</label>
+                      <select>
+                        <option>Strong (8+ chars, mixed case, numbers, symbols)</option>
+                        <option>Medium (6+ chars, mixed case)</option>
+                        <option>Basic (4+ chars)</option>
+                      </select>
+                    </div>
+                    <button className="btn-primary">Save Settings</button>
+                  </div>
+                </div>
               </div>
             </section>
           )}
-
         </div>
       </main>
 
@@ -678,164 +1498,1047 @@ export default function AdminDashboard() {
           <div className={`modal-inner ${activeTab === 'exams' ? 'large-modal' : ''}`}>
             <button className="close" onClick={() => setShowModal(false)}>×</button>
             {activeTab === 'users' && (
-              <UserForm user={selectedUser} onSave={(u) => { if (selectedUser) updateUser(selectedUser.id, u); else addUser(u as any); setShowModal(false); }} />
+              <UserForm user={selectedUser} onSave={(u) => { 
+                if (selectedUser) updateUser(selectedUser.id, u); 
+                else addUser(u as any); 
+                setShowModal(false); 
+              }} />
             )}
             {activeTab === 'exams' && (
-              <ExamForm exam={selectedExam} users={users} onSave={(e) => { if (selectedExam) updateExam(selectedExam.id, e as any); else createExam(e as any); setShowModal(false); }} />
+              <ExamForm exam={selectedExam} users={users} onSave={(e) => { 
+                if (selectedExam) updateExam(selectedExam.id, e as any); 
+                else createExam(e as any); 
+                setShowModal(false); 
+              }} />
             )}
           </div>
         </div>
       )}
 
-      {/* -------------------- CSS Styling (Modern, Attractive, Animated) -------------------- */}
+      {/* -------------------- Enhanced CSS Styling -------------------- */}
       <style>{`
-        /* Colors & Fonts */
-        :root{ --accent:#4f46e5; --accent-light:#6366f1; --accent-dark:#4338ca; --muted:#6b7280; --bg:#f8fafc; --bg-dark:#0f172a; --card-bg:#fff; --text-color:#1e293b; --danger:#ef4444; }
-        * { box-sizing: border-box; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
-        html, body, #root { height: 100%; margin: 0; padding: 0; background: var(--bg); }
-        .admin-app { display: flex; height: 100vh; color: var(--text-color); }
+        /* Enhanced Color Scheme */
+        :root {
+          --primary: #4f46e5;
+          --primary-light: #6366f1;
+          --primary-dark: #4338ca;
+          --secondary: #8b5cf6;
+          --success: #10b981;
+          --warning: #f59e0b;
+          --danger: #ef4444;
+          --info: #06b6d4;
+          --dark: #0f172a;
+          --light: #f8fafc;
+          --gray: #64748b;
+          --gray-light: #e2e8f0;
+          --card-bg: #ffffff;
+          --sidebar-bg: #1e293b;
+        }
 
-        /* Sidebar - Dark & Modern */
-        .sidebar { width: 220px; background: var(--bg-dark); color: #fff; padding: 20px; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
-        .brand { font-size: 24px; font-weight: 800; margin-bottom: 25px; color: var(--accent-light); text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        nav { display: flex; flex-direction: column; gap: 8px; flex: 1; }
-        nav button { background: transparent; border: none; color: #cbd5e1; padding: 12px 10px; text-align: left; border-radius: 10px; cursor: pointer; transition: all .25s ease-out; font-size: 15px; display: flex; align-items: center; gap: 10px; }
-        nav button:hover { background: rgba(255,255,255,0.08); transform: translateX(4px); color: #fff; }
-        nav button.active { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(79,70,229,0.4); font-weight: 600; }
-        .sidebar-footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 13px; color: #94a3b8; }
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
 
-        /* Main Content & Topbar */
-        .main { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
-        .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 30px; background: var(--card-bg); border-bottom: 1px solid #eef2ff; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
-        .search input { padding: 10px 16px; border-radius: 10px; border: 1px solid #e6edf3; min-width: 400px; transition: all .3s; }
-        .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); outline: none; }
-        .actions button { margin-left: 10px; padding: 10px 16px; border-radius: 10px; border: none; background: var(--accent); color: #fff; cursor: pointer; box-shadow: 0 4px 10px rgba(79,70,229,0.2); transition: all .2s; font-weight: 500; }
-        .actions button:hover { background: var(--accent-dark); transform: translateY(-1px); }
+        body {
+          background: var(--light);
+          color: var(--dark);
+          line-height: 1.6;
+        }
 
-        /* Content & Cards */
-        .content { padding: 30px; overflow-y: auto; height: 100%; }
-        h2 { margin-top: 0; font-size: 24px; color: var(--text-color); border-bottom: 2px solid #eef2ff; padding-bottom: 10px; margin-bottom: 20px; }
-        h3 { margin-top: 0; color: var(--accent); font-size: 18px; margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: 320px 1fr; gap: 30px; }
-        .card { background: var(--card-bg); border-radius: 14px; padding: 25px; box-shadow: 0 10px 30px rgba(2,6,23,0.08); transition: all .3s; }
-        .card:hover { box-shadow: 0 15px 40px rgba(2,6,23,0.1); }
-        .card.large { height: 480px; overflow: auto; }
-        .stat-summary { display: flex; flex-direction: column; }
-        .stats { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px; }
-        .stat { background: linear-gradient(135deg, #f0f4ff, #e0e8ff); padding: 15px; border-radius: 12px; min-width: 140px; display: flex; align-items: center; gap: 10px; flex: 1; min-width: 130px; box-shadow: inset 0 -2px 0 rgba(79,70,229,0.2); animation: fadeInUp 0.5s; }
-        .stat-icon { font-size: 24px; }
-        .stat-value { font-weight: 700; font-size: 20px; color: var(--accent-dark); }
-        .stat-label { font-size: 13px; color: var(--muted); }
-        .analytics { margin-top: 25px; padding-top: 15px; border-top: 1px solid #eef2ff; }
-        .mini-chart { margin-top: 12px; background: #eef2ff; border-radius: 999px; height: 15px; overflow: hidden; }
-        .mini-chart .bar { height: 100%; background: linear-gradient(90deg, var(--accent), #22c55e); border-radius: 999px; transition: width 1s ease-out; animation: slideIn 1s; }
-        .meta { font-size: 14px; color: var(--muted); margin-top: 10px; }
-        .meta b { color: var(--text-color); }
-        .hint { font-size: 12px; color: var(--muted); padding: 10px 0; border-top: 1px dashed #eef2ff; margin-top: 10px; }
-        .notice { font-style: italic; color: #06b6d4; background: #e0f7fa; padding: 10px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #06b6d4; }
+        .admin-app {
+          display: flex;
+          min-height: 100vh;
+          background: var(--light);
+        }
 
+        /* Sidebar */
+        .sidebar {
+          width: 260px;
+          background: var(--sidebar-bg);
+          color: white;
+          padding: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+          z-index: 100;
+        }
+
+        .brand {
+          font-size: 1.75rem;
+          font-weight: 800;
+          margin-bottom: 2rem;
+          color: var(--primary-light);
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .user-info {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          margin-bottom: 2rem;
+        }
+
+        .user-avatar {
+          width: 40px;
+          height: 40px;
+          background: var(--primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 1.2rem;
+        }
+
+        .user-avatar.small {
+          width: 32px;
+          height: 32px;
+          font-size: 0.9rem;
+        }
+
+        .user-details small {
+          color: var(--gray-light);
+          font-size: 0.85rem;
+        }
+
+        nav {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          flex: 1;
+        }
+
+        nav button {
+          background: transparent;
+          border: none;
+          color: #cbd5e1;
+          padding: 0.875rem 1rem;
+          text-align: left;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-size: 0.95rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          position: relative;
+        }
+
+        nav button:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: white;
+        }
+
+        nav button.active {
+          background: var(--primary);
+          color: white;
+          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .badge {
+          background: var(--primary);
+          color: white;
+          font-size: 0.75rem;
+          padding: 0.25rem 0.5rem;
+          border-radius: 999px;
+          min-width: 20px;
+          text-align: center;
+        }
+
+        .badge.danger {
+          background: var(--danger);
+        }
+
+        .badge.warn {
+          background: var(--warning);
+        }
+
+        .sidebar-footer {
+          padding-top: 1rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          font-size: 0.85rem;
+          color: var(--gray-light);
+        }
+
+        .system-status {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--success);
+        }
+
+        .status-dot.online {
+          background: var(--success);
+        }
+
+        .status-dot.offline {
+          background: var(--danger);
+        }
+
+        /* Main Content */
+        .main {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .topbar {
+          padding: 1rem 2rem;
+          background: white;
+          border-bottom: 1px solid var(--gray-light);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .search {
+          position: relative;
+          flex: 1;
+          max-width: 500px;
+        }
+
+        .search input {
+          width: 100%;
+          padding: 0.75rem 1rem 0.75rem 2.5rem;
+          border: 2px solid var(--gray-light);
+          border-radius: 10px;
+          font-size: 0.95rem;
+          transition: all 0.3s;
+        }
+
+        .search input:focus {
+          outline: none;
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: var(--gray);
+        }
+
+        .actions {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .notification-bell {
+          position: relative;
+          cursor: pointer;
+          font-size: 1.25rem;
+        }
+
+        .notification-count {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          background: var(--danger);
+          color: white;
+          font-size: 0.75rem;
+          padding: 0.25rem 0.5rem;
+          border-radius: 999px;
+          min-width: 18px;
+          text-align: center;
+        }
+
+        .content {
+          flex: 1;
+          padding: 2rem;
+          overflow-y: auto;
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+        }
+
+        .page-header h2 {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: var(--dark);
+          margin: 0;
+        }
+
+        .header-actions {
+          display: flex;
+          gap: 1rem;
+        }
+
+        /* Buttons */
+        button {
+          cursor: pointer;
+          border: none;
+          border-radius: 8px;
+          padding: 0.75rem 1.5rem;
+          font-size: 0.95rem;
+          font-weight: 500;
+          transition: all 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .btn-primary {
+          background: var(--primary);
+          color: white;
+        }
+
+        .btn-primary:hover {
+          background: var(--primary-dark);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-secondary {
+          background: var(--gray-light);
+          color: var(--dark);
+        }
+
+        .btn-secondary:hover {
+          background: #d1d5db;
+        }
+
+        .btn-sm {
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+        }
+
+        .btn-xs {
+          padding: 0.25rem 0.5rem;
+          font-size: 0.75rem;
+        }
+
+        .btn-success {
+          background: var(--success);
+          color: white;
+        }
+
+        .btn-warn {
+          background: var(--warning);
+          color: white;
+        }
+
+        .btn-danger {
+          background: var(--danger);
+          color: white;
+        }
+
+        /* Cards */
+        .card {
+          background: white;
+          border-radius: 16px;
+          padding: 1.5rem;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          margin-bottom: 1.5rem;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .card h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: var(--dark);
+          margin-bottom: 1.5rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .stat-card {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-icon {
+          font-size: 2rem;
+          width: 60px;
+          height: 60px;
+          background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+
+        .stat-content {
+          flex: 1;
+        }
+
+        .stat-value {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: var(--dark);
+        }
+
+        .stat-label {
+          font-size: 0.875rem;
+          color: var(--gray);
+          margin-top: 0.25rem;
+        }
+
+        .stat-trend {
+          font-size: 0.75rem;
+          font-weight: 500;
+          margin-top: 0.25rem;
+        }
+
+        .stat-trend.positive {
+          color: var(--success);
+        }
+
+        .stat-trend.negative {
+          color: var(--danger);
+        }
+
+        /* Grid Layout */
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 1.5rem;
+        }
 
         /* Tables */
-        .table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; }
-        .table th, .table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 14px; }
-        .table th { background: #f8fafc; font-weight: 600; color: var(--text-color); position: sticky; top: 0; z-index: 1; }
-        .table tr:last-child td { border-bottom: none; }
-        .table button { padding: 6px 10px; margin-right: 6px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; transition: all .2s; font-size: 13px; }
-        .table button:hover { background: #f1f5f9; border-color: #cbd5e1; }
-        .table button.danger { background: #fee2e2; color: var(--danger); border-color: #fca5a5; }
-        .table button.danger:hover { background: #fecaca; }
-        .table button.warn { background: #fff7ed; color: #f97316; border-color: #fed7aa; }
-        .status-active { color: #10b981; font-weight: 600; }
-        .status-inactive { color: var(--danger); }
-        .q-text { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .role-admin { color: var(--accent); font-weight: 600; }
-        .role-teacher { color: #06b6d4; font-weight: 500; }
-        .role-student { color: #22c55e; }
-        .toolbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid #eef2ff; margin-bottom: 10px; }
+        .table-responsive {
+          overflow-x: auto;
+        }
+
+        .table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .table th {
+          background: var(--light);
+          padding: 1rem;
+          text-align: left;
+          font-weight: 600;
+          color: var(--dark);
+          border-bottom: 2px solid var(--gray-light);
+          white-space: nowrap;
+        }
+
+        .table td {
+          padding: 1rem;
+          border-bottom: 1px solid var(--gray-light);
+          vertical-align: middle;
+        }
+
+        .table tr:hover {
+          background: rgba(79, 70, 229, 0.02);
+        }
+
+        .table.compact th,
+        .table.compact td {
+          padding: 0.75rem;
+        }
+
+        /* Badges */
+        .status-badge {
+          display: inline-block;
+          padding: 0.25rem 0.75rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          text-transform: capitalize;
+        }
+
+        .status-badge.success {
+          background: #d1fae5;
+          color: var(--success);
+        }
+
+        .status-badge.danger {
+          background: #fee2e2;
+          color: var(--danger);
+        }
+
+        .status-badge.warning {
+          background: #fef3c7;
+          color: var(--warning);
+        }
+
+        .status-badge.info {
+          background: #dbeafe;
+          color: var(--info);
+        }
+
+        .role-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          text-transform: capitalize;
+        }
+
+        .role-badge.admin {
+          background: #ede9fe;
+          color: var(--primary);
+        }
+
+        .role-badge.teacher {
+          background: #e0f2fe;
+          color: var(--info);
+        }
+
+        .role-badge.student {
+          background: #dcfce7;
+          color: var(--success);
+        }
+
+        /* Monitor Cards */
+        .monitor-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .monitor-card {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          border: 2px solid var(--gray-light);
+          transition: all 0.3s;
+        }
+
+        .monitor-card.online {
+          border-color: var(--success);
+        }
+
+        .monitor-card.offline {
+          border-color: var(--gray);
+          opacity: 0.7;
+        }
+
+        .monitor-card.alert {
+          border-color: var(--danger);
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .monitor-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .student-info {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .progress-bar {
+          height: 8px;
+          background: var(--gray-light);
+          border-radius: 4px;
+          overflow: hidden;
+          margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--primary), var(--secondary));
+          border-radius: 4px;
+          transition: width 0.3s;
+        }
+
+        .monitor-actions {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 1rem;
+        }
 
         /* Forms */
-        .form { display: flex; flex-direction: column; gap: 15px; }
-        .form label { font-weight: 500; font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
-        .form input:not([type="checkbox"]), .form select, .form textarea { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color .3s; width: 100%; }
-        .form input:focus, .form select:focus, .form textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(79,70,229,0.1); }
-        .form-group-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .form button { padding: 10px 15px; background: var(--accent); color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: background .3s; margin-top: 10px; }
-        .form button.secondary { background: #e2e8f0; color: var(--text-color); margin-left: 10px; }
-        .form button.secondary:hover { background: #cbd5e1; }
-        .form button:hover { background: var(--accent-dark); }
-        .form-options { display: flex; gap: 20px; align-items: center; }
-        fieldset { border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-top: 15px; }
-        legend { font-weight: 600; color: var(--accent); padding: 0 10px; }
-        .assignment-list .students-scroll { max-height: 120px; overflow-y: auto; padding: 5px; display: flex; flex-direction: column; gap: 5px; }
-        .assignment-list label { font-weight: normal; display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13px; }
+        .form {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
 
-        /* Monitoring */
-        .monitor-list{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;}
-        .monitor-card{width:280px;padding:20px;border-radius:12px;background:#f8fafc;box-shadow:0 8px 24px rgba(2,6,23,0.04);position:relative;transition:transform .2s ease-out, box-shadow .2s; border: 1px solid #eef2ff;}
-        .monitor-card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(2,6,23,0.08);}
-        .monitor-card.online{border-left:4px solid #10b981;}
-        .monitor-card.offline{opacity:0.8;border-left:4px solid #94a3b8;}
-        .monitor-card.alert{border:2px solid var(--danger); box-shadow:0 0 15px rgba(239,68,68,0.3);}
-        .m-header{display:flex;align-items:center;justify-content:space-between; margin-bottom: 8px;}
-        .dot{display:inline-block;width:10px;height:10px;background:#10b981;border-radius:999px;margin-left:8px; animation: pulse 1.5s infinite;}
-        .dot.off{background:#ef4444; animation: none;}
-        .meter{height:10px;background:#eef2ff;border-radius:999px;margin:10px 0; overflow: hidden;}
-        .meter-fill{height:100%;background:linear-gradient(90deg,var(--accent),#06b6d4);border-radius:999px;transition:width 1s; animation: slideIn 1s;}
-        .m-meta{font-size:13px;color:#6b7280;}
-        .m-alert { font-size: 12px; color: var(--danger); font-weight: 600; animation: flash 1s infinite alternate; }
-        .m-actions button{padding:6px 10px;margin-top:10px;margin-right:8px;border-radius:8px;border:none;background:#e2e8f0; color: var(--text-color); cursor: pointer;}
-        .m-actions button.danger { background: #fee2e2; color: var(--danger); }
+        .form label {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          font-weight: 500;
+        }
 
-        /* Reports */
-        .reports-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-top: 20px; }
-        .chart-card { background: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #eef2ff; }
-        .bars { display: flex; align-items: flex-end; justify-content: space-around; height: 150px; padding: 10px; }
-        .bar-item { width: 40px; text-align: center; height: 100%; display: flex; flex-direction: column-reverse; }
-        .bar-fill { width: 100%; background: var(--accent-light); border-radius: 5px 5px 0 0; transition: height 1s; animation: growUp 1s; }
-        .bar-item small { margin-top: 5px; font-size: 11px; color: var(--muted); }
-        .report-actions button { display: block; width: 100%; margin: 10px 0; background: #eef2ff; color: var(--text-color); border: 1px solid #e2e8f0; }
-        .report-actions button:hover { background: #e2e8f0; }
+        .form input,
+        .form select,
+        .form textarea {
+          padding: 0.75rem;
+          border: 2px solid var(--gray-light);
+          border-radius: 8px;
+          font-size: 0.95rem;
+          transition: all 0.3s;
+        }
 
-        /* Settings */
-        .settings-grid { display: flex; flex-direction: column; gap: 15px; margin-top: 15px; }
-        .settings-grid label { display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer; }
-        .security-note { font-style: italic; color: var(--danger); border-left: 3px solid var(--danger); padding-left: 10px; margin-top: 20px; }
-        .animated-checkbox input[type="checkbox"] { transform: scale(1.2); }
-        .animated-checkbox:hover input[type="checkbox"] { box-shadow: 0 0 0 4px rgba(79,70,229,0.1); }
+        .form input:focus,
+        .form select:focus,
+        .form textarea:focus {
+          outline: none;
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-actions {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .security-settings {
+          border: 1px solid var(--gray-light);
+          border-radius: 8px;
+          padding: 1rem;
+          margin: 1rem 0;
+        }
+
+        .security-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+        }
 
         /* Modal */
-        .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;}
-        .modal-inner{background:var(--card-bg);padding:30px;border-radius:14px;box-shadow:0 15px 40px rgba(0,0,0,0.3);position:relative;width:480px;max-height:90vh;overflow-y:auto;}
-        .modal-inner.large-modal { width: 700px; }
-        .close{position:absolute;top:10px;right:10px;background:transparent;border:none;font-size:24px;color:var(--muted);cursor:pointer;transition:transform .2s;}
-        .close:hover{color:var(--danger);transform:rotate(90deg);}
+        .modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          animation: fadeIn 0.3s;
+        }
+
+        .modal-inner {
+          background: white;
+          border-radius: 16px;
+          padding: 2rem;
+          max-width: 600px;
+          width: 90%;
+          max-height: 90vh;
+          overflow-y: auto;
+          position: relative;
+          animation: slideUp 0.3s;
+        }
+
+        .modal-inner.large-modal {
+          max-width: 800px;
+        }
+
+        .close {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: transparent;
+          border: none;
+          font-size: 1.5rem;
+          color: var(--gray);
+          cursor: pointer;
+          padding: 0.5rem;
+        }
+
+        .close:hover {
+          color: var(--danger);
+        }
 
         /* Animations */
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-in { animation: fadeInUp 0.5s ease-out; }
-        .animate-row { animation: fadeInUp 0.3s ease-out; }
-        @keyframes slideIn {
-          from { width: 0; }
-        }
-        @keyframes growUp {
-          from { height: 0; }
-        }
-        @keyframes pulse {
-          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-          70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-        @keyframes flash {
-          from { background-color: #fef2f2; }
-          to { background-color: #fca5a5; }
-        }
-        .animate-modal { animation: fadeIn 0.3s; }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-in {
+          animation: fadeIn 0.5s ease-out;
+        }
+
+        .animate-modal {
+          animation: fadeIn 0.3s;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+          .sidebar {
+            width: 70px;
+            padding: 1rem;
+          }
+          
+          .brand,
+          .user-info,
+          .user-details,
+          nav button span:not(.badge) {
+            display: none;
+          }
+          
+          nav button {
+            justify-content: center;
+            padding: 0.75rem;
+          }
+          
+          .badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          
+          .monitor-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .topbar {
+            flex-direction: column;
+            gap: 1rem;
+          }
+          
+          .search {
+            max-width: 100%;
+          }
+        }
+
+        /* Utility Classes */
+        .action-buttons {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .user-cell {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .exam-title-cell {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .exam-title-cell small {
+          color: var(--gray);
+          font-size: 0.875rem;
+        }
+
+        .security-icons {
+          display: flex;
+          gap: 0.5rem;
+          font-size: 1.25rem;
+        }
+
+        .question-text {
+          max-width: 300px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        /* Alert Items */
+        .alert-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .alert-item {
+          background: #fef2f2;
+          border-left: 4px solid var(--danger);
+          padding: 1rem;
+          border-radius: 8px;
+        }
+
+        .alert-item.high {
+          background: #fef2f2;
+          border-left-color: var(--danger);
+        }
+
+        .alert-item.medium {
+          background: #fffbeb;
+          border-left-color: var(--warning);
+        }
+
+        .alert-item.low {
+          background: #f0f9ff;
+          border-left-color: var(--info);
+        }
+
+        .alert-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .severity-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          text-transform: uppercase;
+        }
+
+        .severity-badge.high {
+          background: #fee2e2;
+          color: var(--danger);
+        }
+
+        .severity-badge.medium {
+          background: #fef3c7;
+          color: var(--warning);
+        }
+
+        .severity-badge.low {
+          background: #dbeafe;
+          color: var(--info);
+        }
+
+        /* Performance Metrics */
+        .performance-stats {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .performance-metric {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .metric-label {
+          font-size: 0.875rem;
+          color: var(--gray);
+        }
+
+        .metric-value {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--dark);
+        }
+
+        /* Charts */
+        .bar-chart {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-top: 1rem;
+        }
+
+        .bar-item {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .bar-label {
+          width: 100px;
+          font-size: 0.875rem;
+          color: var(--dark);
+        }
+
+        .bar-track {
+          flex: 1;
+          height: 20px;
+          background: var(--gray-light);
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .bar-fill {
+          height: 100%;
+          border-radius: 10px;
+          transition: width 1s ease-out;
+        }
+
+        .bar-value {
+          width: 40px;
+          text-align: right;
+          font-weight: 600;
+          font-size: 0.875rem;
+        }
+
+        /* Tabs */
+        .tabs {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1.5rem;
+          border-bottom: 2px solid var(--gray-light);
+          padding-bottom: 0.5rem;
+        }
+
+        .tab {
+          padding: 0.5rem 1rem;
+          background: transparent;
+          border: none;
+          color: var(--gray);
+          font-weight: 500;
+          cursor: pointer;
+          border-radius: 8px 8px 0 0;
+        }
+
+        .tab:hover {
+          background: var(--gray-light);
+        }
+
+        .tab.active {
+          background: var(--primary);
+          color: white;
+        }
+
+        /* Settings */
+        .settings-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .setting-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .setting-item label {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        .setting-item small {
+          color: var(--gray);
+          font-size: 0.875rem;
+          margin-left: 2rem;
+        }
+
+        .settings-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .form-group label {
+          font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+          padding: 0.75rem;
+          border: 2px solid var(--gray-light);
+          border-radius: 8px;
+          font-size: 0.95rem;
+        }
+
+        /* Notification Items */
+        .notification-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .notification-item {
+          padding: 1rem;
+          border-radius: 8px;
+          border: 1px solid var(--gray-light);
+        }
+
+        .notification-item.unread {
+          background: #f0f9ff;
+          border-color: var(--info);
+        }
+
+        .notification-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .notification-body {
+          color: var(--gray);
+          margin-bottom: 0.5rem;
+        }
+
+        .notification-footer {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.875rem;
+          color: var(--gray);
         }
       `}</style>
     </div>
