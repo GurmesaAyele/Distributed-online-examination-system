@@ -193,3 +193,4 @@ def assignment_detail_update_delete(request, assignment_id):
     elif request.method == 'DELETE':
         assignment.delete()
         return Response({"message": "Assignment deleted"}, status=204)
+

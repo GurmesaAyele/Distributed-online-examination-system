@@ -12,6 +12,7 @@ urlpatterns = [
     path("login/", login_view),
     path("users/", user_list_create),
     path("users/<int:user_id>/", user_detail_update_delete),
+    
 
     # Exams
     path("exams/", exam_list_create),

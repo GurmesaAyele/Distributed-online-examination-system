@@ -81,3 +81,10 @@ class ExamAssignment(models.Model):
         return f"{self.student.username} - {self.exam.name}"
 
 
+from rest_framework import serializers
+from .models import CustomUser
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'role', 'is_active', 'profile_photo']
