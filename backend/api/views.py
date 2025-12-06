@@ -469,3 +469,58 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+# System Settings ViewSet
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])  # Allow anyone to read, but only admins can write
+def system_settings_view(request):
+    if request.method == 'GET':
+        try:
+            settings = SystemSettings.objects.first()
+            if settings:
+                return Response({
+                    'logo': settings.logo.url if settings.logo else '',
+                    'welcome_text': settings.welcome_text
+                })
+            return Response({
+                'logo': '',
+                'welcome_text': 'Welcome to Online Exam Platform'
+            })
+        except Exception as e:
+            return Response({
+                'logo': '',
+                'welcome_text': 'Welcome to Online Exam Platform'
+            })
+    
+    elif request.method == 'POST':
+        if not request.user.is_authenticated or request.user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        
+        settings, created = SystemSettings.objects.get_or_create(id=1)
+        settings.welcome_text = request.data.get('welcome_text', settings.welcome_text)
+        settings.save()
+        
+        return Response({
+            'logo': settings.logo.url if settings.logo else '',
+            'welcome_text': settings.welcome_text
+        })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_system_logo(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    settings, created = SystemSettings.objects.get_or_create(id=1)
+    
+    if 'logo' in request.FILES:
+        settings.logo = request.FILES['logo']
+        settings.save()
+        return Response({
+            'logo': settings.logo.url,
+            'message': 'Logo uploaded successfully'
+        })
+    
+    return Response({'error': 'No logo file provided'}, status=status.HTTP_400_BAD_REQUEST)

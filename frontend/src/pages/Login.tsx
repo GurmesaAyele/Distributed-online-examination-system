@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Container,
   Box,
@@ -17,8 +17,27 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [systemSettings, setSystemSettings] = useState({
+    logo: '',
+    welcome_text: 'Welcome to Online Exam Platform'
+  })
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
+
+  useEffect(() => {
+    fetchSystemSettings()
+  }, [])
+
+  const fetchSystemSettings = async () => {
+    try {
+      const response = await api.get('/system-settings/')
+      if (response.data) {
+        setSystemSettings(response.data)
+      }
+    } catch (error) {
+      console.log('Using default settings')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,15 +59,32 @@ const Login = () => {
     <Container maxWidth="sm">
       <Box
         sx={{
-          marginTop: 8,
+          marginTop: 4,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
         }}
       >
+        {/* Logo at top-center of page */}
+        {systemSettings.logo && (
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <img 
+              src={`http://localhost:8000${systemSettings.logo}`} 
+              alt="System Logo" 
+              style={{ 
+                maxWidth: '250px', 
+                maxHeight: '150px', 
+                objectFit: 'contain',
+                display: 'block',
+                margin: '0 auto'
+              }}
+            />
+          </Box>
+        )}
+
         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
           <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Online Exam Platform
+            {systemSettings.welcome_text}
           </Typography>
           <Typography component="h2" variant="h6" align="center" color="textSecondary" gutterBottom>
             Login
@@ -90,13 +126,9 @@ const Login = () => {
             >
               {loading ? 'Logging in...' : 'Login'}
             </Button>
-            <Box sx={{ textAlign: 'center' }}>
-              <Link to="/register" style={{ textDecoration: 'none' }}>
-                <Typography color="primary">
-                  Don't have an account? Register
-                </Typography>
-              </Link>
-            </Box>
+            <Typography variant="body2" align="center" color="textSecondary" sx={{ mt: 2 }}>
+              Contact your administrator for account access
+            </Typography>
           </Box>
         </Paper>
       </Box>

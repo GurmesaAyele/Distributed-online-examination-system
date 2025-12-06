@@ -199,3 +199,21 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class SystemSettings(models.Model):
+    logo = models.ImageField(upload_to='system/', null=True, blank=True)
+    welcome_text = models.CharField(max_length=500, default='Welcome to Online Exam Platform')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'System Settings'
+
+    def __str__(self):
+        return 'System Settings'
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one instance exists
+        if not self.pk and SystemSettings.objects.exists():
+            raise ValueError('Only one SystemSettings instance is allowed')
+        return super().save(*args, **kwargs)

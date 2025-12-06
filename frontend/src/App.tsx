@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import Login from './pages/Login'
-import Register from './pages/Register'
 import StudentDashboard from './pages/StudentDashboard'
 import TeacherDashboard from './pages/TeacherDashboard'
 import AdminDashboard from './pages/AdminDashboard'
@@ -30,7 +29,6 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
           
           <Route
             path="/student/*"

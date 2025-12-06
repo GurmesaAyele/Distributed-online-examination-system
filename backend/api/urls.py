@@ -18,4 +18,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('auth/register/', register, name='register'),
     path('auth/login/', login, name='login'),
+    path('system-settings/', system_settings_view, name='system-settings'),
+    path('system-settings/upload_logo/', upload_system_logo, name='upload-system-logo'),
 ]

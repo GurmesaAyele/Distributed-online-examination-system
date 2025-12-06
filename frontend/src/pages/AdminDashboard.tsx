@@ -33,11 +33,54 @@ const AdminDashboard = () => {
   const [resetPasswordUser, setResetPasswordUser] = useState<any>(null)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [systemSettings, setSystemSettings] = useState({
+    logo: '',
+    welcome_text: 'Welcome to Online Exam Platform'
+  })
 
   const toggleDarkMode = () => {
     const newMode = !darkMode
     setDarkMode(newMode)
     localStorage.setItem('darkMode', String(newMode))
+  }
+
+  const fetchSystemSettings = async () => {
+    try {
+      const response = await api.get('/system-settings/')
+      if (response.data) {
+        setSystemSettings(response.data)
+      }
+    } catch (error) {
+      console.log('No system settings found')
+    }
+  }
+
+  const handleUpdateSystemSettings = async () => {
+    try {
+      await api.post('/system-settings/', { welcome_text: systemSettings.welcome_text })
+      alert('✅ Welcome text updated successfully!')
+    } catch (error) {
+      console.error('Error updating settings:', error)
+      alert('❌ Failed to update settings')
+    }
+  }
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const formData = new FormData()
+      formData.append('logo', e.target.files[0])
+      
+      try {
+        const response = await api.post('/system-settings/upload_logo/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        setSystemSettings({ ...systemSettings, logo: response.data.logo })
+        alert('✅ Logo uploaded successfully!')
+      } catch (error) {
+        console.error('Error uploading logo:', error)
+        alert('❌ Failed to upload logo')
+      }
+    }
   }
   const [userForm, setUserForm] = useState({
     username: '', email: '', password: '', first_name: '', last_name: '', role: 'student', department: '', is_active: true
@@ -58,6 +101,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData()
+    fetchSystemSettings()
   }, [])
 
   const fetchData = async () => {
@@ -397,6 +441,7 @@ const AdminDashboard = () => {
           <Tab label="Courses" />
           <Tab label="Subjects" />
           <Tab label="Announcements" />
+          <Tab label="System Settings" />
         </Tabs>
 
         {/* Tab 0: Analytics & Charts */}
@@ -776,6 +821,62 @@ const AdminDashboard = () => {
             <Button variant="contained" onClick={() => setOpenAnnouncementDialog(true)}>
               Create Announcement
             </Button>
+          </Paper>
+        )}
+
+        {/* Tab 7: System Settings */}
+        {activeTab === 7 && (
+          <Paper sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+            <Typography variant="h5" gutterBottom>System Settings</Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+              Customize the login page appearance
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card sx={{ p: 3, bgcolor: darkMode ? '#2a2a2a' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                  <Typography variant="h6" gutterBottom>Welcome Text</Typography>
+                  <TextField
+                    fullWidth
+                    label="Welcome Message"
+                    value={systemSettings.welcome_text}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, welcome_text: e.target.value })}
+                    sx={{ mb: 2 }}
+                    placeholder="Welcome to Online Exam Platform"
+                  />
+                  <Button variant="contained" onClick={handleUpdateSystemSettings}>
+                    Update Welcome Text
+                  </Button>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Card sx={{ p: 3, bgcolor: darkMode ? '#2a2a2a' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                  <Typography variant="h6" gutterBottom>System Logo</Typography>
+                  {systemSettings.logo && (
+                    <Box sx={{ mb: 2, textAlign: 'center' }}>
+                      <img 
+                        src={`http://localhost:8000${systemSettings.logo}`} 
+                        alt="Current Logo" 
+                        style={{ maxWidth: '200px', maxHeight: '100px', objectFit: 'contain' }}
+                      />
+                    </Box>
+                  )}
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="logo-upload"
+                    type="file"
+                    onChange={handleLogoUpload}
+                  />
+                  <label htmlFor="logo-upload">
+                    <Button variant="contained" component="span" fullWidth>
+                      {systemSettings.logo ? 'Change Logo' : 'Upload Logo'}
+                    </Button>
+                  </label>
+                </Card>
+              </Grid>
+            </Grid>
           </Paper>
         )}
       </Container>
