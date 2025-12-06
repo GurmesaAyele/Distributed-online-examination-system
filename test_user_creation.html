@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test User Creation</title>
+</head>
+<body>
+    <h1>Test User Creation API</h1>
+    <button onclick="testCreateUser()">Test Create User</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testCreateUser() {
+            const resultEl = document.getElementById('result');
+            
+            try {
+                // First login as admin
+                const loginRes = await fetch('http://localhost:8000/api/auth/login/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                
+                const loginData = await loginRes.json();
+                resultEl.textContent = 'Login response:\n' + JSON.stringify(loginData, null, 2);
+                
+                if (!loginData.access) {
+                    resultEl.textContent += '\n\nLogin failed!';
+                    return;
+                }
+                
+                // Now try to create a user
+                const createRes = await fetch('http://localhost:8000/api/users/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${loginData.access}`
+                    },
+                    body: JSON.stringify({
+                        username: 'testuser' + Date.now(),
+                        email: 'test' + Date.now() + '@example.com',
+                        password: 'test123456',
+                        first_name: 'Test',
+                        last_name: 'User',
+                        role: 'student',
+                        is_active: true
+                    })
+                });
+                
+                const createData = await createRes.json();
+                resultEl.textContent += '\n\nCreate user response:\n' + JSON.stringify(createData, null, 2);
+                
+                if (createRes.ok) {
+                    resultEl.textContent += '\n\n✅ SUCCESS! User created.';
+                } else {
+                    resultEl.textContent += '\n\n❌ FAILED! Status: ' + createRes.status;
+                }
+                
+            } catch (error) {
+                resultEl.textContent += '\n\nError: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

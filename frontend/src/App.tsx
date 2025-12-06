@@ -1,29 +1,87 @@
-import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LoginForm from "./components/Login";
-import AdminDashboard from "./pages/AdminDashboard";
-import TeacherDashboard from "./pages/TeacherDashboard";
-import StudentDashboard from "./pages/StudentDashboard";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import StudentDashboard from './pages/StudentDashboard'
+import TeacherDashboard from './pages/TeacherDashboard'
+import AdminDashboard from './pages/AdminDashboard'
+import ExamInterface from './pages/ExamInterface'
+import ProtectedRoute from './components/ProtectedRoute'
+import { useAuthStore } from './store/authStore'
 
-const App: React.FC = () => {
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+})
 
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/hello/")
-      .then(res => res.json())
-      .then(data => console.log("Backend Connected:", data))
-      .catch(err => console.error("Connection Error:", err));
-  }, []);
+function App() {
+  const { user } = useAuthStore()
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LoginForm />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/teacher" element={<TeacherDashboard />} />
-        <Route path="/student" element={<StudentDashboard />} />
-      </Routes>
-    </Router>
-  );
-};
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          <Route
+            path="/student/*"
+            element={
+              <ProtectedRoute role="student">
+                <StudentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/teacher/*"
+            element={
+              <ProtectedRoute role="teacher">
+                <TeacherDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/admin/*"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/exam/:examId"
+            element={
+              <ProtectedRoute role="student">
+                <ExamInterface />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/"
+            element={
+              user ? (
+                <Navigate to={`/${user.role}`} replace />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+        </Routes>
+      </Router>
+    </ThemeProvider>
+  )
+}
 
-export default App;
+export default App
