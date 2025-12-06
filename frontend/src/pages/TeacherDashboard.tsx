@@ -26,6 +26,7 @@ const TeacherDashboard = () => {
   const [openQuestionDialog, setOpenQuestionDialog] = useState(false)
   const [selectedExam, setSelectedExam] = useState<any>(null)
   const [studentsStatus, setStudentsStatus] = useState<any[]>([])
+  const [allExamsStatus, setAllExamsStatus] = useState<any[]>([])
   const [examForm, setExamForm] = useState({
     title: '', 
     description: '', 
@@ -75,6 +76,13 @@ const TeacherDashboard = () => {
   useEffect(() => {
     fetchData()
   }, [])
+
+  useEffect(() => {
+    // Load all exams status when Monitor Students tab is accessed and no specific exam is selected
+    if (activeTab === 3 && !selectedExam && exams.length > 0) {
+      fetchAllExamsStatus()
+    }
+  }, [activeTab, selectedExam, exams])
 
   const fetchData = async () => {
     try {
@@ -300,10 +308,31 @@ const TeacherDashboard = () => {
     }
   }
 
+  const fetchAllExamsStatus = async () => {
+    try {
+      // Fetch status for all exams
+      const statusPromises = exams.map(exam => 
+        api.get(`/exams/${exam.id}/students_status/`)
+          .then(res => ({
+            exam: exam,
+            students: res.data
+          }))
+          .catch(err => {
+            console.error(`Error fetching status for exam ${exam.id}:`, err)
+            return { exam: exam, students: [] }
+          })
+      )
+      const results = await Promise.all(statusPromises)
+      setAllExamsStatus(results)
+    } catch (error) {
+      console.error('Error fetching all exams status:', error)
+    }
+  }
+
   const handleMonitorExam = (exam: any) => {
     setSelectedExam(exam)
     fetchStudentsStatus(exam.id)
-    setActiveTab(2)
+    setActiveTab(3)
   }
 
   const handleDeleteExam = async (examId: number, examTitle: string) => {
@@ -924,15 +953,27 @@ const TeacherDashboard = () => {
         )}
 
         {/* Tab 3: Monitor Students */}
-        {activeTab === 3 && selectedExam && (
+        {activeTab === 3 && (
           <Box>
-            <Paper sx={{ p: 3, mb: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h5">Monitor: {selectedExam.title}</Typography>
-                <Button variant="contained" onClick={() => fetchStudentsStatus(selectedExam.id)}>
-                  🔄 Refresh
-                </Button>
-              </Box>
+            {selectedExam ? (
+              // Specific Exam Monitoring
+              <Box>
+                <Paper sx={{ p: 3, mb: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box>
+                      <Typography variant="h5">Monitor: {selectedExam.title}</Typography>
+                      <Button 
+                        size="small" 
+                        onClick={() => setSelectedExam(null)}
+                        sx={{ mt: 1 }}
+                      >
+                        ← Back to All Exams
+                      </Button>
+                    </Box>
+                    <Button variant="contained" onClick={() => fetchStudentsStatus(selectedExam.id)}>
+                      🔄 Refresh
+                    </Button>
+                  </Box>
               
               {/* Summary Cards */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -1123,6 +1164,106 @@ const TeacherDashboard = () => {
                 </Table>
               </TableContainer>
             </Paper>
+              </Box>
+            ) : (
+              // General Overview of All Exams
+              <Box>
+                <Paper sx={{ p: 3, mb: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h5">Monitor All Exams</Typography>
+                    <Button variant="contained" onClick={fetchAllExamsStatus}>
+                      🔄 Refresh All
+                    </Button>
+                  </Box>
+                  
+                  <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+                    Overview of all your exams. Click "View Details" to monitor a specific exam.
+                  </Typography>
+
+                  {/* All Exams Overview */}
+                  <Grid container spacing={3}>
+                    {exams.length === 0 ? (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="textSecondary" align="center" sx={{ py: 5 }}>
+                          No exams created yet. Go to "Create Exam" tab to create your first exam.
+                        </Typography>
+                      </Grid>
+                    ) : (
+                      exams.map((exam) => {
+                        const examStatus = allExamsStatus.find(e => e.exam.id === exam.id)
+                        const students = examStatus?.students || []
+                        const onlineCount = students.filter((s: any) => s.is_online).length
+                        const violationsCount = students.filter((s: any) => s.violations > 0).length
+                        const bannedCount = students.filter((s: any) => s.status === 'auto_submitted').length
+                        const completedCount = students.filter((s: any) => s.status === 'submitted' || s.status === 'evaluated').length
+
+                        return (
+                          <Grid item xs={12} md={6} key={exam.id}>
+                            <Card sx={{ bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit', border: '1px solid', borderColor: darkMode ? '#333' : '#e0e0e0' }}>
+                              <CardContent>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                                  <Box>
+                                    <Typography variant="h6">{exam.title}</Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                      {exam.subject_name}
+                                    </Typography>
+                                  </Box>
+                                  <Chip 
+                                    label={exam.status} 
+                                    color={exam.status === 'approved' ? 'success' : exam.status === 'pending' ? 'warning' : 'error'} 
+                                    size="small"
+                                  />
+                                </Box>
+
+                                {/* Mini Stats */}
+                                <Grid container spacing={1} sx={{ mb: 2 }}>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ p: 1, bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5', borderRadius: 1, textAlign: 'center' }}>
+                                      <Typography variant="h6" color="primary">{onlineCount}</Typography>
+                                      <Typography variant="caption">Online</Typography>
+                                    </Box>
+                                  </Grid>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ p: 1, bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5', borderRadius: 1, textAlign: 'center' }}>
+                                      <Typography variant="h6" color="success.main">{completedCount}</Typography>
+                                      <Typography variant="caption">Completed</Typography>
+                                    </Box>
+                                  </Grid>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ p: 1, bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5', borderRadius: 1, textAlign: 'center' }}>
+                                      <Typography variant="h6" color="warning.main">{violationsCount}</Typography>
+                                      <Typography variant="caption">Violations</Typography>
+                                    </Box>
+                                  </Grid>
+                                  <Grid item xs={6}>
+                                    <Box sx={{ p: 1, bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5', borderRadius: 1, textAlign: 'center' }}>
+                                      <Typography variant="h6" color="error.main">{bannedCount}</Typography>
+                                      <Typography variant="caption">Banned</Typography>
+                                    </Box>
+                                  </Grid>
+                                </Grid>
+
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Button 
+                                    size="small" 
+                                    variant="contained" 
+                                    startIcon={<Visibility />}
+                                    onClick={() => handleMonitorExam(exam)}
+                                    fullWidth
+                                  >
+                                    View Details
+                                  </Button>
+                                </Box>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        )
+                      })
+                    )}
+                  </Grid>
+                </Paper>
+              </Box>
+            )}
           </Box>
         )}
       </Container>

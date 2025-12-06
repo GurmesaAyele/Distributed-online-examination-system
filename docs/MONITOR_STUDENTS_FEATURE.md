@@ -5,14 +5,29 @@ The Monitor Students feature in the Teacher Dashboard allows teachers to track s
 
 ## Features Implemented
 
-### 1. Summary Cards
+### 1. General Overview (All Exams)
+When accessing Monitor Students tab directly:
+- **Exam Cards Grid**: Shows all exams in card format
+- **Mini Statistics per Exam**:
+  - Online students count (blue)
+  - Completed students count (green)
+  - Students with violations (orange)
+  - Banned students count (red)
+- **View Details Button**: Click to see detailed monitoring for that exam
+- **Refresh All Button**: Updates data for all exams at once
+- **Status Chips**: Shows exam status (approved/pending/rejected)
+
+### 2. Specific Exam Monitoring
+When monitoring a specific exam (via Monitor button or View Details):
+
+#### Summary Cards
 Four summary cards display at-a-glance statistics:
 - **Students Online**: Count of students currently taking the exam (status: in_progress)
 - **With Violations**: Count of students who have committed any violations
 - **Banned**: Count of students auto-submitted due to exceeding 3 violations
 - **Completed**: Count of students who have submitted or completed the exam
 
-### 2. Detailed Student Table
+#### Detailed Student Table
 Comprehensive table showing:
 - **Student Name**: With avatar showing first letter of name
 - **Status**: Online (🟢) or Offline (⚫) indicator
@@ -27,7 +42,7 @@ Comprehensive table showing:
   - 📝 In Progress (in_progress)
   - Not Started (not_started)
 
-### 3. Visual Indicators
+#### Visual Indicators
 - **Color-coded rows**: Banned students have red background
 - **Progress bars**: Green bars showing completion percentage
 - **Status chips**: Color-coded chips for quick status identification
@@ -64,14 +79,30 @@ Comprehensive table showing:
 
 ## How to Use
 
-### For Teachers:
-1. Go to **My Exams** tab
-2. Click **Monitor** button on any exam
-3. View real-time student status in the **Monitor Students** tab
-4. Click **🔄 Refresh** to update data
+### Two Ways to Monitor:
 
-### Accessing from Exam Creation:
-- After creating an exam, click **Monitor** to track students
+#### 1. General Overview (Monitor Students Tab)
+1. Click on **Monitor Students** tab (Tab 3)
+2. See overview cards for ALL your exams
+3. Each exam card shows:
+   - Online students count
+   - Completed students count
+   - Students with violations
+   - Banned students count
+4. Click **View Details** on any exam to see detailed monitoring
+5. Click **🔄 Refresh All** to update all exams data
+
+#### 2. Specific Exam Monitoring (From My Exams)
+1. Go to **My Exams** tab
+2. Click **Monitor** button on a specific exam
+3. Automatically switches to Monitor Students tab with detailed view
+4. See comprehensive student table with:
+   - Real-time online/offline status
+   - Progress bars
+   - Individual violation counts
+   - Exam status for each student
+5. Click **← Back to All Exams** to return to general overview
+6. Click **🔄 Refresh** to update that exam's data
 
 ## Violation System
 - **Tab Switch**: Logged when student switches browser tabs
