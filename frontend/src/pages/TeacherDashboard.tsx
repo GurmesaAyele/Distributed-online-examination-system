@@ -21,13 +21,28 @@ const TeacherDashboard = () => {
   })
   const [exams, setExams] = useState<any[]>([])
   const [subjects, setSubjects] = useState<any[]>([])
+  const [departments, setDepartments] = useState<any[]>([])
+  const [courses, setCourses] = useState<any[]>([])
   const [openQuestionDialog, setOpenQuestionDialog] = useState(false)
   const [selectedExam, setSelectedExam] = useState<any>(null)
   const [studentsStatus, setStudentsStatus] = useState<any[]>([])
   const [examForm, setExamForm] = useState({
-    title: '', description: '', subject: '', duration_minutes: 60, total_marks: 100,
-    passing_marks: 40, negative_marking: false, negative_marks_per_question: 0,
-    shuffle_questions: true, start_time: '', end_time: ''
+    title: '', 
+    description: '', 
+    subject: '', 
+    department: '',
+    course: '',
+    custom_department: '',
+    custom_course: '',
+    additional_info: '',
+    duration_minutes: 60, 
+    total_marks: 100,
+    passing_marks: 40, 
+    negative_marking: false, 
+    negative_marks_per_question: 0,
+    shuffle_questions: true, 
+    start_time: '', 
+    end_time: ''
   })
   const [questions, setQuestions] = useState<any[]>([])
   const [parsedQuestions, setParsedQuestions] = useState<any[]>([])
@@ -63,13 +78,17 @@ const TeacherDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [examsRes, subjectsRes, attemptsRes] = await Promise.all([
+      const [examsRes, subjectsRes, attemptsRes, deptsRes, coursesRes] = await Promise.all([
         api.get('/exams/'),
         api.get('/subjects/'),
-        api.get('/attempts/')
+        api.get('/attempts/'),
+        api.get('/departments/'),
+        api.get('/courses/')
       ])
       setExams(examsRes.data)
       setSubjects(subjectsRes.data)
+      setDepartments(deptsRes.data)
+      setCourses(coursesRes.data)
 
       // Calculate stats
       const totalExams = examsRes.data.length
@@ -595,6 +614,75 @@ const TeacherDashboard = () => {
                   {subjects.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
                 </TextField>
               </Grid>
+              
+              {/* Department Selection */}
+              <Grid item xs={12} md={6}>
+                <TextField 
+                  fullWidth 
+                  select 
+                  label="Department (Optional)" 
+                  value={examForm.department}
+                  onChange={(e) => setExamForm({ ...examForm, department: e.target.value, custom_department: '' })}
+                  helperText="Select from existing or type custom below"
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+                </TextField>
+              </Grid>
+              
+              {/* Custom Department Input */}
+              <Grid item xs={12} md={6}>
+                <TextField 
+                  fullWidth 
+                  label="Custom Department" 
+                  value={examForm.custom_department}
+                  onChange={(e) => setExamForm({ ...examForm, custom_department: e.target.value, department: '' })}
+                  helperText="Type custom department if not found above"
+                  placeholder="e.g., Computer Science, Mathematics"
+                />
+              </Grid>
+              
+              {/* Course Selection */}
+              <Grid item xs={12} md={6}>
+                <TextField 
+                  fullWidth 
+                  select 
+                  label="Course (Optional)" 
+                  value={examForm.course}
+                  onChange={(e) => setExamForm({ ...examForm, course: e.target.value, custom_course: '' })}
+                  helperText="Select from existing or type custom below"
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {courses.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+                </TextField>
+              </Grid>
+              
+              {/* Custom Course Input */}
+              <Grid item xs={12} md={6}>
+                <TextField 
+                  fullWidth 
+                  label="Custom Course" 
+                  value={examForm.custom_course}
+                  onChange={(e) => setExamForm({ ...examForm, custom_course: e.target.value, course: '' })}
+                  helperText="Type custom course if not found above"
+                  placeholder="e.g., Data Structures, Calculus I"
+                />
+              </Grid>
+              
+              {/* Additional Information */}
+              <Grid item xs={12}>
+                <TextField 
+                  fullWidth 
+                  multiline 
+                  rows={2} 
+                  label="Additional Information (Optional)" 
+                  value={examForm.additional_info}
+                  onChange={(e) => setExamForm({ ...examForm, additional_info: e.target.value })}
+                  helperText="Any other useful information for the exam (semester, year, section, etc.)"
+                  placeholder="e.g., Semester 1, Year 2024, Section A"
+                />
+              </Grid>
+              
               <Grid item xs={12}>
                 <TextField fullWidth multiline rows={2} label="Description" value={examForm.description}
                   onChange={(e) => setExamForm({ ...examForm, description: e.target.value })} />

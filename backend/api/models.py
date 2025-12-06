@@ -62,6 +62,14 @@ class Exam(models.Model):
     description = models.TextField(blank=True)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='exams')
     teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exams_created')
+    
+    # Optional department and course (can be from existing or custom text)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
+    course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
+    custom_department = models.CharField(max_length=200, blank=True)
+    custom_course = models.CharField(max_length=200, blank=True)
+    additional_info = models.TextField(blank=True)
+    
     duration_minutes = models.IntegerField()
     total_marks = models.IntegerField()
     passing_marks = models.IntegerField()
