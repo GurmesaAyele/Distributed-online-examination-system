@@ -223,6 +223,26 @@ class AnnouncementRead(models.Model):
         return f"{self.user.username} read {self.announcement.title}"
 
 
+class ExamFeedback(models.Model):
+    """Student feedback/comments about exams"""
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='feedbacks')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exam_feedbacks')
+    attempt = models.ForeignKey(ExamAttempt, on_delete=models.CASCADE, related_name='feedback', null=True, blank=True)
+    comment = models.TextField()
+    rating = models.IntegerField(null=True, blank=True, help_text='Rating from 1-5')
+    is_reviewed = models.BooleanField(default=False)
+    teacher_response = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('exam', 'student')
+
+    def __str__(self):
+        return f"{self.student.username} feedback on {self.exam.title}"
+
+
 class SystemSettings(models.Model):
     logo = models.ImageField(upload_to='system/', null=True, blank=True)
     welcome_text = models.CharField(max_length=500, default='Welcome to Online Exam Platform')

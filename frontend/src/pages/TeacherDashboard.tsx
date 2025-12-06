@@ -29,6 +29,10 @@ const TeacherDashboard = () => {
   const [allExamsStatus, setAllExamsStatus] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [feedbacks, setFeedbacks] = useState<any[]>([])
+  const [selectedFeedback, setSelectedFeedback] = useState<any>(null)
+  const [teacherResponse, setTeacherResponse] = useState('')
+  const [openResponseDialog, setOpenResponseDialog] = useState(false)
   const [examForm, setExamForm] = useState({
     title: '', 
     description: '', 
@@ -79,6 +83,7 @@ const TeacherDashboard = () => {
     fetchData()
     fetchAnnouncements()
     fetchUnreadCount()
+    fetchFeedbacks()
   }, [])
 
   useEffect(() => {
@@ -380,6 +385,41 @@ const TeacherDashboard = () => {
     }
   }
 
+  const fetchFeedbacks = async () => {
+    try {
+      const response = await api.get('/feedbacks/')
+      setFeedbacks(response.data)
+    } catch (error) {
+      console.error('Error fetching feedbacks:', error)
+    }
+  }
+
+  const handleOpenResponseDialog = (feedback: any) => {
+    setSelectedFeedback(feedback)
+    setTeacherResponse(feedback.teacher_response || '')
+    setOpenResponseDialog(true)
+  }
+
+  const handleSubmitResponse = async () => {
+    if (!teacherResponse.trim()) {
+      alert('Please write a response')
+      return
+    }
+
+    try {
+      await api.post(`/feedbacks/${selectedFeedback.id}/add_response/`, {
+        teacher_response: teacherResponse
+      })
+      setOpenResponseDialog(false)
+      setTeacherResponse('')
+      alert('✅ Response sent successfully!')
+      fetchFeedbacks()
+    } catch (error: any) {
+      console.error('Error submitting response:', error)
+      alert('❌ Failed to send response: ' + (error.response?.data?.detail || 'Unknown error'))
+    }
+  }
+
   return (
     <Box sx={{ bgcolor: darkMode ? '#121212' : '#f5f5f5', minHeight: '100vh' }}>
       <AppBar position="static" sx={{ bgcolor: darkMode ? '#1e1e1e' : '#1976d2' }}>
@@ -481,6 +521,21 @@ const TeacherDashboard = () => {
                     label={unreadCount} 
                     size="small" 
                     color="error" 
+                    sx={{ height: 20, minWidth: 20, fontSize: '0.75rem' }}
+                  />
+                )}
+              </Box>
+            } 
+          />
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                Student Feedback
+                {feedbacks.filter(f => !f.is_reviewed).length > 0 && (
+                  <Chip 
+                    label={feedbacks.filter(f => !f.is_reviewed).length} 
+                    size="small" 
+                    color="warning" 
                     sx={{ height: 20, minWidth: 20, fontSize: '0.75rem' }}
                   />
                 )}
@@ -1374,7 +1429,128 @@ const TeacherDashboard = () => {
             )}
           </Box>
         )}
+
+        {/* Tab 5: Student Feedback */}
+        {activeTab === 5 && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Student Feedback
+            </Typography>
+
+            {feedbacks.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                <Typography variant="h6" color="textSecondary">
+                  No feedback received yet
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  Students will be able to leave feedback after completing exams
+                </Typography>
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {feedbacks.map((feedback) => (
+                  <Grid item xs={12} key={feedback.id}>
+                    <Card sx={{ 
+                      bgcolor: darkMode ? '#1e1e1e' : 'white', 
+                      color: darkMode ? '#fff' : 'inherit',
+                      border: feedback.is_reviewed ? '1px solid #ddd' : '2px solid #ff9800',
+                      boxShadow: feedback.is_reviewed ? 1 : 3
+                    }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="h6">{feedback.exam_title}</Typography>
+                            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                              From: {feedback.student_name} • {new Date(feedback.created_at).toLocaleString()}
+                            </Typography>
+                            {feedback.rating && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                <Typography variant="body2">Rating:</Typography>
+                                {[...Array(5)].map((_, i) => (
+                                  <span key={i} style={{ fontSize: '1.2rem', color: i < feedback.rating ? '#ffc107' : '#ddd' }}>★</span>
+                                ))}
+                              </Box>
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Chip 
+                              label={feedback.is_reviewed ? 'Reviewed' : 'Pending'} 
+                              color={feedback.is_reviewed ? 'success' : 'warning'}
+                              size="small"
+                            />
+                            {!feedback.is_reviewed && (
+                              <Button 
+                                size="small" 
+                                variant="contained"
+                                onClick={() => handleOpenResponseDialog(feedback)}
+                              >
+                                Respond
+                              </Button>
+                            )}
+                          </Box>
+                        </Box>
+                        
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>Student's Comment:</Typography>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mb: 2, p: 2, bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5', borderRadius: 1 }}>
+                          {feedback.comment}
+                        </Typography>
+
+                        {feedback.teacher_response && (
+                          <Box sx={{ mt: 2, p: 2, bgcolor: darkMode ? '#1a3a1a' : '#e8f5e9', borderRadius: 1, border: '1px solid #4caf50' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1, color: '#4caf50' }}>
+                              Your Response:
+                            </Typography>
+                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                              {feedback.teacher_response}
+                            </Typography>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        )}
       </Container>
+
+      {/* Teacher Response Dialog */}
+      <Dialog open={openResponseDialog} onClose={() => setOpenResponseDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Respond to Feedback</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Student: {selectedFeedback?.student_name}
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Exam: {selectedFeedback?.exam_title}
+          </Typography>
+          
+          <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>Student's Comment:</Typography>
+          <Paper sx={{ p: 2, mb: 2, bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5' }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {selectedFeedback?.comment}
+            </Typography>
+          </Paper>
+
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="Your Response"
+            value={teacherResponse}
+            onChange={(e) => setTeacherResponse(e.target.value)}
+            placeholder="Thank the student and address their feedback..."
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenResponseDialog(false)}>Cancel</Button>
+          <Button onClick={handleSubmitResponse} variant="contained" color="primary">
+            Send Response
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={openQuestionDialog} onClose={() => setOpenQuestionDialog(false)} maxWidth="md" fullWidth>
 

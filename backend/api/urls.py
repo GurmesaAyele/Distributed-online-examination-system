@@ -13,6 +13,7 @@ router.register(r'assignments', ExamAssignmentViewSet)
 router.register(r'attempts', ExamAttemptViewSet)
 router.register(r'notifications', NotificationViewSet)
 router.register(r'announcements', AnnouncementViewSet)
+router.register(r'feedbacks', ExamFeedbackViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -156,3 +156,13 @@ class AnnouncementReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnnouncementRead
         fields = '__all__'
+
+
+class ExamFeedbackSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.get_full_name', read_only=True)
+    exam_title = serializers.CharField(source='exam.title', read_only=True)
+    
+    class Meta:
+        model = ExamFeedback
+        fields = '__all__'
+        read_only_fields = ['student', 'is_reviewed', 'teacher_response', 'created_at', 'updated_at']

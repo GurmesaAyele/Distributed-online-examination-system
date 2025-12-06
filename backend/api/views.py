@@ -551,3 +551,48 @@ def upload_system_logo(request):
         })
     
     return Response({'error': 'No logo file provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ExamFeedbackViewSet(viewsets.ModelViewSet):
+    queryset = ExamFeedback.objects.all()
+    serializer_class = ExamFeedbackSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'student':
+            # Students see only their own feedback
+            return ExamFeedback.objects.filter(student=user)
+        elif user.role == 'teacher':
+            # Teachers see feedback for their exams
+            return ExamFeedback.objects.filter(exam__teacher=user)
+        elif user.role == 'admin':
+            # Admins see all feedback
+            return ExamFeedback.objects.all()
+        return ExamFeedback.objects.none()
+
+    def perform_create(self, serializer):
+        # Only students can create feedback
+        if self.request.user.role != 'student':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only students can submit feedback')
+        serializer.save(student=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def add_response(self, request, pk=None):
+        """Teacher adds response to feedback"""
+        if request.user.role not in ['teacher', 'admin']:
+            return Response({'error': 'Only teachers can respond to feedback'}, status=status.HTTP_403_FORBIDDEN)
+        
+        feedback = self.get_object()
+        
+        # Check if teacher owns the exam
+        if request.user.role == 'teacher' and feedback.exam.teacher != request.user:
+            return Response({'error': 'You can only respond to feedback for your exams'}, status=status.HTTP_403_FORBIDDEN)
+        
+        teacher_response = request.data.get('teacher_response', '')
+        feedback.teacher_response = teacher_response
+        feedback.is_reviewed = True
+        feedback.save()
+        
+        return Response({'message': 'Response added successfully'})

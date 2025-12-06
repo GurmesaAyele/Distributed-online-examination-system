@@ -22,6 +22,7 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  TextField,
 } from '@mui/material'
 import { Logout, Upload, TrendingUp, Assignment, CheckCircle, Schedule, Block, Brightness4, Brightness7 } from '@mui/icons-material'
 import { LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
@@ -38,6 +39,15 @@ const StudentDashboard = () => {
   const [allAttempts, setAllAttempts] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [feedbacks, setFeedbacks] = useState<any[]>([])
+  const [feedbackForm, setFeedbackForm] = useState({
+    exam: '',
+    attempt: '',
+    comment: '',
+    rating: 5
+  })
+  const [openFeedbackDialog, setOpenFeedbackDialog] = useState(false)
+  const [selectedExamForFeedback, setSelectedExamForFeedback] = useState<any>(null)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved === 'true'
@@ -69,6 +79,7 @@ const StudentDashboard = () => {
     fetchData()
     fetchAnnouncements()
     fetchUnreadCount()
+    fetchFeedbacks()
   }, [])
 
   const fetchData = async () => {
@@ -295,6 +306,45 @@ const StudentDashboard = () => {
     }
   }
 
+  const fetchFeedbacks = async () => {
+    try {
+      const response = await api.get('/feedbacks/')
+      setFeedbacks(response.data)
+    } catch (error) {
+      console.error('Error fetching feedbacks:', error)
+    }
+  }
+
+  const handleOpenFeedbackDialog = (exam: any, attempt: any) => {
+    setSelectedExamForFeedback(exam)
+    setFeedbackForm({
+      exam: exam.id,
+      attempt: attempt?.id || '',
+      comment: '',
+      rating: 5
+    })
+    setOpenFeedbackDialog(true)
+  }
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackForm.comment.trim()) {
+      showDialog('Error', 'Please write a comment', 'error')
+      return
+    }
+
+    try {
+      await api.post('/feedbacks/', feedbackForm)
+      setOpenFeedbackDialog(false)
+      setFeedbackForm({ exam: '', attempt: '', comment: '', rating: 5 })
+      showDialog('Success', 'Feedback submitted successfully!', 'success')
+      fetchFeedbacks()
+    } catch (error: any) {
+      console.error('Error submitting feedback:', error)
+      const errorMsg = error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || 'Failed to submit feedback'
+      showDialog('Error', errorMsg, 'error')
+    }
+  }
+
   return (
     <Box sx={{ bgcolor: darkMode ? '#121212' : '#f5f5f5', minHeight: '100vh' }}>
       <AppBar position="static" sx={{ bgcolor: darkMode ? '#1e1e1e' : '#1976d2' }}>
@@ -432,6 +482,7 @@ const StudentDashboard = () => {
               </Box>
             } 
           />
+          <Tab label="Feedback" />
         </Tabs>
 
         {/* Tab 0: My Exams */}
@@ -604,6 +655,17 @@ const StudentDashboard = () => {
                        examStatus.status === 'active' ? '▶️ Start Exam' : 
                        '🔒 Expired'}
                     </Button>
+
+                    {isCompleted && !isBanned && (
+                      <Button
+                        variant="outlined"
+                        fullWidth
+                        sx={{ mt: 1 }}
+                        onClick={() => handleOpenFeedbackDialog(exam, examStatus.attempt)}
+                      >
+                        💬 Leave Feedback
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -837,7 +899,120 @@ const StudentDashboard = () => {
             )}
           </Box>
         )}
+
+        {/* Tab 4: Feedback */}
+        {activeTab === 4 && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              My Feedback
+            </Typography>
+
+            {feedbacks.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                <Typography variant="h6" color="textSecondary">
+                  No feedback submitted yet
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  Complete an exam and leave feedback for your teacher
+                </Typography>
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {feedbacks.map((feedback) => (
+                  <Grid item xs={12} key={feedback.id}>
+                    <Card sx={{ 
+                      bgcolor: darkMode ? '#1e1e1e' : 'white', 
+                      color: darkMode ? '#fff' : 'inherit',
+                      border: feedback.is_reviewed ? '2px solid #4caf50' : '1px solid #ddd'
+                    }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="h6">{feedback.exam_title}</Typography>
+                            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                              Submitted: {new Date(feedback.created_at).toLocaleString()}
+                            </Typography>
+                            {feedback.rating && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                <Typography variant="body2">Rating:</Typography>
+                                {[...Array(5)].map((_, i) => (
+                                  <span key={i} style={{ color: i < feedback.rating ? '#ffc107' : '#ddd' }}>★</span>
+                                ))}
+                              </Box>
+                            )}
+                          </Box>
+                          <Chip 
+                            label={feedback.is_reviewed ? 'Reviewed' : 'Pending'} 
+                            color={feedback.is_reviewed ? 'success' : 'warning'}
+                            size="small"
+                          />
+                        </Box>
+                        
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>Your Comment:</Typography>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mb: 2, p: 2, bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5', borderRadius: 1 }}>
+                          {feedback.comment}
+                        </Typography>
+
+                        {feedback.teacher_response && (
+                          <Box sx={{ mt: 2, p: 2, bgcolor: darkMode ? '#1a3a1a' : '#e8f5e9', borderRadius: 1, border: '1px solid #4caf50' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1, color: '#4caf50' }}>
+                              Teacher's Response:
+                            </Typography>
+                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                              {feedback.teacher_response}
+                            </Typography>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        )}
       </Container>
+
+      {/* Feedback Dialog */}
+      <Dialog open={openFeedbackDialog} onClose={() => setOpenFeedbackDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Leave Feedback for {selectedExamForFeedback?.title}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Share your thoughts about this exam with your teacher
+          </Typography>
+          
+          <Typography variant="body2" sx={{ mb: 1 }}>Rating (Optional):</Typography>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <IconButton
+                key={star}
+                onClick={() => setFeedbackForm({ ...feedbackForm, rating: star })}
+                sx={{ p: 0.5 }}
+              >
+                <span style={{ fontSize: '2rem', color: star <= feedbackForm.rating ? '#ffc107' : '#ddd' }}>★</span>
+              </IconButton>
+            ))}
+          </Box>
+
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="Your Comment"
+            value={feedbackForm.comment}
+            onChange={(e) => setFeedbackForm({ ...feedbackForm, comment: e.target.value })}
+            placeholder="Share your experience, suggestions, or concerns about this exam..."
+            sx={{ mt: 2 }}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenFeedbackDialog(false)}>Cancel</Button>
+          <Button onClick={handleSubmitFeedback} variant="contained" color="primary">
+            Submit Feedback
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Dialog for messages */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
