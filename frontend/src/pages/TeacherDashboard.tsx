@@ -222,7 +222,9 @@ const TeacherDashboard = () => {
       
       // Reset form
       setExamForm({
-        title: '', description: '', subject: '', duration_minutes: 60, total_marks: 100,
+        title: '', description: '', subject: '', department: '', course: '',
+        custom_department: '', custom_course: '', additional_info: '',
+        duration_minutes: 60, total_marks: 100,
         passing_marks: 40, negative_marking: false, negative_marks_per_question: 0,
         shuffle_questions: true, start_time: '', end_time: ''
       })
@@ -923,37 +925,205 @@ const TeacherDashboard = () => {
 
         {/* Tab 3: Monitor Students */}
         {activeTab === 3 && selectedExam && (
-          <Paper sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
-            <Typography variant="h5" gutterBottom>Monitor: {selectedExam.title}</Typography>
-            <Button onClick={() => fetchStudentsStatus(selectedExam.id)} sx={{ mb: 2 }}>Refresh</Button>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Student Name</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Progress</TableCell>
-                    <TableCell>Violations</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {studentsStatus.map((student) => (
-                    <TableRow key={student.student_id}>
-                      <TableCell>{student.student_name}</TableCell>
-                      <TableCell>
-                        <Chip label={student.is_online ? 'Online' : 'Offline'}
-                          color={student.is_online ? 'success' : 'default'} size="small" />
-                      </TableCell>
-                      <TableCell>{student.progress} questions</TableCell>
-                      <TableCell>
-                        <Chip label={student.violations} color={student.violations > 0 ? 'error' : 'default'} size="small" />
-                      </TableCell>
+          <Box>
+            <Paper sx={{ p: 3, mb: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5">Monitor: {selectedExam.title}</Typography>
+                <Button variant="contained" onClick={() => fetchStudentsStatus(selectedExam.id)}>
+                  🔄 Refresh
+                </Button>
+              </Box>
+              
+              {/* Summary Cards */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ bgcolor: '#e3f2fd', color: '#1976d2' }}>
+                    <CardContent>
+                      <Typography variant="body2">Students Online</Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                        {studentsStatus.filter(s => s.is_online).length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ bgcolor: '#fff3e0', color: '#f57c00' }}>
+                    <CardContent>
+                      <Typography variant="body2">With Violations</Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                        {studentsStatus.filter(s => s.violations > 0).length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ bgcolor: '#ffebee', color: '#d32f2f' }}>
+                    <CardContent>
+                      <Typography variant="body2">Banned</Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                        {studentsStatus.filter(s => s.status === 'auto_submitted').length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ bgcolor: '#e8f5e9', color: '#388e3c' }}>
+                    <CardContent>
+                      <Typography variant="body2">Completed</Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                        {studentsStatus.filter(s => s.status === 'submitted' || s.status === 'evaluated').length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Detailed Students Table */}
+            <Paper sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+              <Typography variant="h6" gutterBottom>Student Details</Typography>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: darkMode ? '#2a2a2a' : '#f5f5f5' }}>
+                      <TableCell><strong>Student Name</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                      <TableCell><strong>Action</strong></TableCell>
+                      <TableCell><strong>Progress</strong></TableCell>
+                      <TableCell><strong>Tab Switches</strong></TableCell>
+                      <TableCell><strong>Copy/Paste</strong></TableCell>
+                      <TableCell><strong>Total Violations</strong></TableCell>
+                      <TableCell><strong>Exam Status</strong></TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+                  </TableHead>
+                  <TableBody>
+                    {studentsStatus.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center">
+                          <Typography variant="body2" color="textSecondary" sx={{ py: 3 }}>
+                            No students have started this exam yet
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      studentsStatus.map((student) => (
+                        <TableRow 
+                          key={student.student_id}
+                          sx={{ 
+                            '&:hover': { bgcolor: darkMode ? '#2a2a2a' : '#f9f9f9' },
+                            bgcolor: student.status === 'auto_submitted' ? (darkMode ? '#3d1f1f' : '#ffebee') : 'inherit'
+                          }}
+                        >
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Avatar sx={{ width: 32, height: 32, bgcolor: '#1976d2' }}>
+                                {student.student_name.charAt(0)}
+                              </Avatar>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {student.student_name}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={student.is_online ? 'Online' : 'Offline'}
+                              color={student.is_online ? 'success' : 'default'} 
+                              size="small"
+                              icon={student.is_online ? <span>🟢</span> : <span>⚫</span>}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={student.is_online ? 'Taking Exam' : 'Not Active'}
+                              size="small"
+                              sx={{ 
+                                bgcolor: student.is_online ? '#e3f2fd' : '#f5f5f5',
+                                color: student.is_online ? '#1976d2' : '#666'
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {student.progress || 0} / {selectedExam.questions_count || 0} questions
+                            </Typography>
+                            <Box sx={{ width: '100%', mt: 0.5 }}>
+                              <Box sx={{ 
+                                width: '100%', 
+                                height: 6, 
+                                bgcolor: '#e0e0e0', 
+                                borderRadius: 3,
+                                overflow: 'hidden'
+                              }}>
+                                <Box sx={{ 
+                                  width: `${((student.progress || 0) / (selectedExam.questions_count || 1)) * 100}%`,
+                                  height: '100%',
+                                  bgcolor: '#4caf50',
+                                  transition: 'width 0.3s ease'
+                                }} />
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={student.tab_switch_count || 0}
+                              size="small"
+                              color={student.tab_switch_count > 0 ? 'warning' : 'default'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={student.copy_paste_count || 0}
+                              size="small"
+                              color={student.copy_paste_count > 0 ? 'warning' : 'default'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={student.violations || 0}
+                              size="small"
+                              color={
+                                student.violations >= 3 ? 'error' : 
+                                student.violations > 0 ? 'warning' : 
+                                'success'
+                              }
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {student.status === 'auto_submitted' ? (
+                              <Chip 
+                                label="🚫 BANNED"
+                                color="error"
+                                size="small"
+                                sx={{ fontWeight: 'bold' }}
+                              />
+                            ) : student.status === 'submitted' || student.status === 'evaluated' ? (
+                              <Chip 
+                                label="✅ Completed"
+                                color="success"
+                                size="small"
+                              />
+                            ) : student.status === 'in_progress' ? (
+                              <Chip 
+                                label="📝 In Progress"
+                                color="primary"
+                                size="small"
+                              />
+                            ) : (
+                              <Chip 
+                                label="Not Started"
+                                size="small"
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          </Box>
         )}
       </Container>
 

@@ -170,6 +170,8 @@ class ExamViewSet(viewsets.ModelViewSet):
                 'is_online': attempt and attempt.status == 'in_progress',
                 'status': attempt.status if attempt else 'not_started',
                 'progress': attempt.answers.count() if attempt else 0,
+                'tab_switch_count': attempt.tab_switch_count if attempt else 0,
+                'copy_paste_count': attempt.copy_paste_count if attempt else 0,
                 'violations': attempt.tab_switch_count + attempt.copy_paste_count if attempt else 0,
             })
         
