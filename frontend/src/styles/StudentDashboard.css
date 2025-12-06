@@ -3,96 +3,157 @@
 /* Main Container */
 .student-dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background-color: #f5f5f5;
   transition: background 0.3s ease;
 }
 
 .student-dashboard.dark-mode {
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  background-color: #121212;
 }
 
 /* AppBar */
 .student-appbar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+  position: static !important;
 }
 
 .student-appbar.dark-mode {
-  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  background-color: #1e1e1e !important;
+}
+
+/* Container */
+.student-container {
+  margin-top: 32px;
+  color: inherit;
+}
+
+.student-container.dark-mode {
+  color: #fff;
+}
+
+/* Welcome Text */
+.student-welcome {
+  font-weight: 700 !important;
+  margin-bottom: 32px !important;
 }
 
 /* Stats Cards with Gradients */
 .student-stats-card {
-  border-radius: 20px !important;
-  overflow: hidden;
-  transition: all 0.3s ease !important;
-  animation: fadeInUp 0.6s ease-out;
-  position: relative;
+  color: white;
+  transition: all 0.3s ease;
 }
 
 .student-stats-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
-.student-stats-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
-  pointer-events: none;
+.student-stats-card-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.student-stats-icon {
+  font-size: 60px !important;
+  opacity: 0.3;
+}
+
+.student-stats-value {
+  font-weight: bold;
+  margin-top: 8px;
+  font-size: 2.5rem;
+}
+
+.student-stats-label {
+  opacity: 0.9;
+  font-size: 0.875rem;
+}
+
+/* Gradient backgrounds for stats cards */
+.student-stats-card.gradient-1 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.student-stats-card.gradient-2 {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.student-stats-card.gradient-3 {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.student-stats-card.gradient-4 {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.student-stats-card.gradient-5 {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
 /* Exam Cards */
 .student-exam-card {
-  border-radius: 16px !important;
-  transition: all 0.3s ease !important;
-  animation: fadeInUp 0.6s ease-out;
-  overflow: hidden;
+  box-shadow: 1;
+  transition: all 0.3s ease;
 }
 
 .student-exam-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .student-exam-card.dark-mode {
-  background: #1e1e1e !important;
-  color: #fff !important;
+  background-color: #1e1e1e;
+  color: #fff;
 }
 
-/* Active Exam Border Animation */
+/* Active Exam Border */
 .student-exam-card.active {
   border: 2px solid #4caf50;
-  animation: pulse-border 2s ease-in-out infinite;
-}
-
-@keyframes pulse-border {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
-  }
+  box-shadow: 3;
 }
 
 /* Banned Exam Styling */
 .student-exam-card.banned {
-  background: #ffebee !important;
+  background-color: #ffebee;
   border: 2px solid #d32f2f;
+  box-shadow: 3;
+  opacity: 0.9;
 }
 
 .student-exam-card.banned.dark-mode {
-  background: #3d1f1f !important;
+  background-color: #3d1f1f;
 }
 
 /* Completed Exam Styling */
 .student-exam-card.completed {
   border: 2px solid #9c27b0;
-  opacity: 0.95;
+  box-shadow: 3;
+  opacity: 0.9;
+}
+
+/* Exam Status Box */
+.student-exam-status-box {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 4px;
+}
+
+.student-exam-status-box.banned {
+  background-color: #ffebee;
+  border-radius: 4px;
+  border: 1px solid #d32f2f;
+}
+
+.student-exam-status-box.completed {
+  background-color: #f3e5f5;
+  border-radius: 4px;
+  border: 1px solid #9c27b0;
+}
+
+.student-exam-status-box.countdown {
+  background-color: #f5f5f5;
+  border-radius: 4px;
 }
 
 /* Charts Container */
@@ -162,28 +223,24 @@
 
 /* Tabs */
 .student-tabs {
-  margin-bottom: 32px !important;
-  margin-top: 32px !important;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.1) !important;
+  margin-bottom: 24px;
+  margin-top: 32px;
+  border-bottom: 1px solid;
+  border-color: divider;
 }
 
-.student-tabs.dark-mode {
-  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+.student-tabs.dark-mode .MuiTab-root {
+  color: #bbb;
 }
 
-.student-tab {
-  font-weight: 600 !important;
-  text-transform: none !important;
-  font-size: 15px !important;
-  transition: all 0.3s ease !important;
+.student-tabs.dark-mode .Mui-selected {
+  color: #90caf9;
 }
 
-.student-tab.dark-mode {
-  color: #bbb !important;
-}
-
-.student-tab.dark-mode.Mui-selected {
-  color: #90caf9 !important;
+/* Section Title */
+.student-section-title {
+  margin-bottom: 16px;
+  font-weight: 500;
 }
 
 /* Animations */
