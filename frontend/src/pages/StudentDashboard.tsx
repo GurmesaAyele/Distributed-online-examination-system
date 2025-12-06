@@ -27,6 +27,7 @@ import { Logout, Upload, TrendingUp, Assignment, CheckCircle, Schedule, Block, B
 import { LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import api from '../api/axios'
 import { useAuthStore } from '../store/authStore'
+import '../styles/StudentDashboard.css'
 
 const StudentDashboard = () => {
   const { user, logout } = useAuthStore()

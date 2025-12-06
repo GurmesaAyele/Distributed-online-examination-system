@@ -9,6 +9,7 @@ import { Logout, Add, Edit, Delete, CheckCircle, Cancel, TrendingUp, People, Sch
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import api from '../api/axios'
 import { useAuthStore } from '../store/authStore'
+import '../styles/AdminDashboard.css'
 
 const AdminDashboard = () => {
   const { user, logout } = useAuthStore()

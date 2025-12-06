@@ -9,6 +9,7 @@ import { Logout, Visibility, School, Assessment, People, TrendingUp, Brightness4
 import { BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import api from '../api/axios'
 import { useAuthStore } from '../store/authStore'
+import '../styles/TeacherDashboard.css'
 
 const TeacherDashboard = () => {
   const { user, logout } = useAuthStore()
