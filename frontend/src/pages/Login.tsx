@@ -56,83 +56,95 @@ const Login = () => {
   }
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 4,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        {/* Logo at top-center of page */}
-        {systemSettings.logo && (
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <img 
-              src={`http://localhost:8000${systemSettings.logo}`} 
-              alt="System Logo" 
-              style={{ 
-                maxWidth: '250px', 
-                maxHeight: '150px', 
-                objectFit: 'contain',
-                display: 'block',
-                margin: '0 auto'
-              }}
-            />
-          </Box>
-        )}
-
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            {systemSettings.welcome_text}
-          </Typography>
-          <Typography component="h2" variant="h6" align="center" color="textSecondary" gutterBottom>
-            Login
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        py: 2
+      }}
+    >
+      <Container maxWidth="sm">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          {/* Logo at top-center of page */}
+          {systemSettings.logo && (
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
+              <img 
+                src={`http://localhost:8000${systemSettings.logo}`} 
+                alt="System Logo" 
+                style={{ 
+                  maxWidth: '200px', 
+                  maxHeight: '80px', 
+                  objectFit: 'contain',
+                  display: 'block',
+                  margin: '0 auto'
+                }}
+              />
+            </Box>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Username"
-              autoComplete="username"
-              autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
-            <Typography variant="body2" align="center" color="textSecondary" sx={{ mt: 2 }}>
-              Contact your administrator for account access
+          <Paper elevation={3} sx={{ p: 3, width: '100%' }}>
+            <Typography component="h1" variant="h5" align="center" gutterBottom>
+              {systemSettings.welcome_text}
             </Typography>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+            <Typography component="h2" variant="body1" align="center" color="textSecondary" gutterBottom>
+              Login
+            </Typography>
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                label="Username"
+                autoComplete="username"
+                autoFocus
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                size="small"
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                label="Password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                size="small"
+              />
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                sx={{ mt: 2, mb: 1 }}
+                disabled={loading}
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </Button>
+              <Typography variant="caption" align="center" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
+                Contact your administrator for account access
+              </Typography>
+            </Box>
+          </Paper>
+        </Box>
+      </Container>
+    </Box>
   )
 }
 
