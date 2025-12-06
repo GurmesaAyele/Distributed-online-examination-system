@@ -209,6 +209,20 @@ class Announcement(models.Model):
         return self.title
 
 
+class AnnouncementRead(models.Model):
+    """Track which users have read which announcements"""
+    announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE, related_name='reads')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='announcement_reads')
+    read_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('announcement', 'user')
+        ordering = ['-read_at']
+
+    def __str__(self):
+        return f"{self.user.username} read {self.announcement.title}"
+
+
 class SystemSettings(models.Model):
     logo = models.ImageField(upload_to='system/', null=True, blank=True)
     welcome_text = models.CharField(max_length=500, default='Welcome to Online Exam Platform')

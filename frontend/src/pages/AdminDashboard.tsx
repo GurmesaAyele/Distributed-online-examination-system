@@ -90,6 +90,8 @@ const AdminDashboard = () => {
   const [courseForm, setCourseForm] = useState({ name: '', code: '', department: '' })
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', course: '', teacher: '' })
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', target_role: '' })
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [stats, setStats] = useState({ total_users: 0, total_exams: 0, pending_exams: 0, active_students: 0 })
   const [chartData, setChartData] = useState<any>({
     usersByRole: [],
@@ -103,6 +105,8 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchData()
     fetchSystemSettings()
+    fetchAnnouncements()
+    fetchUnreadCount()
   }, [])
 
   const fetchData = async () => {
@@ -338,13 +342,44 @@ const AdminDashboard = () => {
     }
   }
 
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await api.get('/announcements/')
+      setAnnouncements(response.data)
+    } catch (error) {
+      console.error('Error fetching announcements:', error)
+    }
+  }
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get('/announcements/unread_count/')
+      setUnreadCount(response.data.unread_count)
+    } catch (error) {
+      console.error('Error fetching unread count:', error)
+    }
+  }
+
+  const handleMarkAsRead = async (announcementId: number) => {
+    try {
+      await api.post(`/announcements/${announcementId}/mark_read/`)
+      fetchUnreadCount()
+      fetchAnnouncements()
+    } catch (error) {
+      console.error('Error marking announcement as read:', error)
+    }
+  }
+
   const handleCreateAnnouncement = async () => {
     try {
       await api.post('/announcements/', announcementForm)
       setOpenAnnouncementDialog(false)
-      alert('Announcement sent')
+      setAnnouncementForm({ title: '', content: '', target_role: '' })
+      alert('✅ Announcement sent successfully!')
+      fetchAnnouncements()
     } catch (error) {
       console.error('Error creating announcement:', error)
+      alert('❌ Failed to send announcement')
     }
   }
 
@@ -441,7 +476,21 @@ const AdminDashboard = () => {
           <Tab label="Departments" />
           <Tab label="Courses" />
           <Tab label="Subjects" />
-          <Tab label="Announcements" />
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                Announcements
+                {unreadCount > 0 && (
+                  <Chip 
+                    label={unreadCount} 
+                    size="small" 
+                    color="error" 
+                    sx={{ height: 20, minWidth: 20, fontSize: '0.75rem' }}
+                  />
+                )}
+              </Box>
+            } 
+          />
           <Tab label="System Settings" />
         </Tabs>
 
@@ -817,12 +866,74 @@ const AdminDashboard = () => {
 
         {/* Tab 6: Announcements */}
         {activeTab === 6 && (
-          <Paper sx={{ p: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
-            <Typography variant="h5" gutterBottom>Send Announcement</Typography>
-            <Button variant="contained" onClick={() => setOpenAnnouncementDialog(true)}>
-              Create Announcement
-            </Button>
-          </Paper>
+          <Box>
+            <Paper sx={{ p: 3, mb: 3, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5">Announcements</Typography>
+                <Button variant="contained" startIcon={<Add />} onClick={() => setOpenAnnouncementDialog(true)}>
+                  Create Announcement
+                </Button>
+              </Box>
+            </Paper>
+
+            {announcements.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                <Typography variant="h6" color="textSecondary">
+                  No announcements yet
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  Create an announcement to notify users
+                </Typography>
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {announcements.map((announcement) => (
+                  <Grid item xs={12} key={announcement.id}>
+                    <Card sx={{ 
+                      bgcolor: darkMode ? '#1e1e1e' : 'white', 
+                      color: darkMode ? '#fff' : 'inherit',
+                      border: announcement.is_read ? '1px solid #ddd' : '2px solid #1976d2',
+                      boxShadow: announcement.is_read ? 1 : 3
+                    }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                              <Typography variant="h6">{announcement.title}</Typography>
+                              {!announcement.is_read && (
+                                <Chip label="NEW" size="small" color="error" />
+                              )}
+                            </Box>
+                            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                              By: {announcement.created_by_name} • {new Date(announcement.created_at).toLocaleString()}
+                            </Typography>
+                            <Chip 
+                              label={announcement.target_role ? `For: ${announcement.target_role.charAt(0).toUpperCase() + announcement.target_role.slice(1)}s` : 'For: Everyone'} 
+                              size="small" 
+                              color="primary"
+                              sx={{ mb: 2 }}
+                            />
+                          </Box>
+                          {!announcement.is_read && (
+                            <Button 
+                              size="small" 
+                              variant="outlined"
+                              onClick={() => handleMarkAsRead(announcement.id)}
+                            >
+                              Mark as Read
+                            </Button>
+                          )}
+                        </Box>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {announcement.content}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
         )}
 
         {/* Tab 7: System Settings */}

@@ -138,7 +138,20 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class AnnouncementSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    is_read = serializers.SerializerMethodField()
     
     class Meta:
         model = Announcement
+        fields = '__all__'
+    
+    def get_is_read(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return AnnouncementRead.objects.filter(announcement=obj, user=request.user).exists()
+        return False
+
+
+class AnnouncementReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnnouncementRead
         fields = '__all__'

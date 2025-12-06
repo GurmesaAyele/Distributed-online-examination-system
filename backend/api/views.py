@@ -471,6 +471,22 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        """Get count of unread announcements for current user"""
+        user = request.user
+        announcements = Announcement.objects.filter(Q(target_role='') | Q(target_role=user.role))
+        read_ids = AnnouncementRead.objects.filter(user=user).values_list('announcement_id', flat=True)
+        unread_count = announcements.exclude(id__in=read_ids).count()
+        return Response({'unread_count': unread_count})
+    
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        """Mark an announcement as read"""
+        announcement = self.get_object()
+        AnnouncementRead.objects.get_or_create(announcement=announcement, user=request.user)
+        return Response({'message': 'Announcement marked as read'})
 
 
 # System Settings ViewSet

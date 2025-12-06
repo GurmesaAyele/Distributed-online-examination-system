@@ -36,6 +36,8 @@ const StudentDashboard = () => {
   const [exams, setExams] = useState<any[]>([])
   const [results, setResults] = useState<any[]>([])
   const [allAttempts, setAllAttempts] = useState<any[]>([])
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved === 'true'
@@ -65,6 +67,8 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     fetchData()
+    fetchAnnouncements()
+    fetchUnreadCount()
   }, [])
 
   const fetchData = async () => {
@@ -263,6 +267,34 @@ const StudentDashboard = () => {
     }
   }
 
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await api.get('/announcements/')
+      setAnnouncements(response.data)
+    } catch (error) {
+      console.error('Error fetching announcements:', error)
+    }
+  }
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get('/announcements/unread_count/')
+      setUnreadCount(response.data.unread_count)
+    } catch (error) {
+      console.error('Error fetching unread count:', error)
+    }
+  }
+
+  const handleMarkAsRead = async (announcementId: number) => {
+    try {
+      await api.post(`/announcements/${announcementId}/mark_read/`)
+      fetchUnreadCount()
+      fetchAnnouncements()
+    } catch (error) {
+      console.error('Error marking announcement as read:', error)
+    }
+  }
+
   return (
     <Box sx={{ bgcolor: darkMode ? '#121212' : '#f5f5f5', minHeight: '100vh' }}>
       <AppBar position="static" sx={{ bgcolor: darkMode ? '#1e1e1e' : '#1976d2' }}>
@@ -385,6 +417,21 @@ const StudentDashboard = () => {
           <Tab label="My Exams" />
           <Tab label="Analytics" />
           <Tab label="Results" />
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                Announcements
+                {unreadCount > 0 && (
+                  <Chip 
+                    label={unreadCount} 
+                    size="small" 
+                    color="error" 
+                    sx={{ height: 20, minWidth: 20, fontSize: '0.75rem' }}
+                  />
+                )}
+              </Box>
+            } 
+          />
         </Tabs>
 
         {/* Tab 0: My Exams */}
@@ -721,6 +768,67 @@ const StudentDashboard = () => {
                         >
                           Download Certificate
                         </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        )}
+
+        {/* Tab 3: Announcements */}
+        {activeTab === 3 && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Announcements
+            </Typography>
+
+            {announcements.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+                <Typography variant="h6" color="textSecondary">
+                  No announcements yet
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  Check back later for updates
+                </Typography>
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {announcements.map((announcement) => (
+                  <Grid item xs={12} key={announcement.id}>
+                    <Card sx={{ 
+                      bgcolor: darkMode ? '#1e1e1e' : 'white', 
+                      color: darkMode ? '#fff' : 'inherit',
+                      border: announcement.is_read ? '1px solid #ddd' : '2px solid #1976d2',
+                      boxShadow: announcement.is_read ? 1 : 3
+                    }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                              <Typography variant="h6">{announcement.title}</Typography>
+                              {!announcement.is_read && (
+                                <Chip label="NEW" size="small" color="error" />
+                              )}
+                            </Box>
+                            <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                              From: {announcement.created_by_name} • {new Date(announcement.created_at).toLocaleString()}
+                            </Typography>
+                          </Box>
+                          {!announcement.is_read && (
+                            <Button 
+                              size="small" 
+                              variant="outlined"
+                              onClick={() => handleMarkAsRead(announcement.id)}
+                            >
+                              Mark as Read
+                            </Button>
+                          )}
+                        </Box>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {announcement.content}
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
