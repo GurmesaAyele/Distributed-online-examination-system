@@ -1,0 +1,241 @@
+/* Admin Dashboard - Modern & Professional Design */
+
+/* Main Container */
+.admin-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  transition: background 0.3s ease;
+}
+
+.admin-dashboard.dark-mode {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
+/* AppBar */
+.admin-appbar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.admin-appbar.dark-mode {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+}
+
+/* Stats Cards */
+.admin-stats-card {
+  border-radius: 20px !important;
+  overflow: hidden;
+  transition: all 0.3s ease !important;
+  animation: fadeInUp 0.6s ease-out;
+  position: relative;
+}
+
+.admin-stats-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+.admin-stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+}
+
+/* Charts Container */
+.admin-chart-paper {
+  padding: 24px !important;
+  border-radius: 16px !important;
+  background: white !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.admin-chart-paper.dark-mode {
+  background: #1e1e1e !important;
+  color: #fff !important;
+}
+
+.admin-chart-paper:hover {
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* User Management Table */
+.admin-table-paper {
+  padding: 24px !important;
+  border-radius: 16px !important;
+  background: white !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.admin-table-paper.dark-mode {
+  background: #1e1e1e !important;
+  color: #fff !important;
+}
+
+.admin-table {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.admin-table-row {
+  transition: all 0.3s ease;
+}
+
+.admin-table-row:hover {
+  background: rgba(102, 126, 234, 0.05) !important;
+  transform: scale(1.01);
+}
+
+/* Pending Exams Section */
+.admin-pending-section {
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+  border-radius: 16px !important;
+  background: #fff3e0 !important;
+  border: 2px solid #ff9800 !important;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.admin-pending-section.dark-mode {
+  background: #3d2e1f !important;
+  color: #fff !important;
+}
+
+/* Department/Course/Subject Cards */
+.admin-entity-card {
+  border-radius: 16px !important;
+  transition: all 0.3s ease !important;
+  animation: fadeInUp 0.6s ease-out;
+  overflow: hidden;
+}
+
+.admin-entity-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+.admin-entity-card.dark-mode {
+  background: #2a2a2a !important;
+  color: #fff !important;
+}
+
+/* System Settings Section */
+.admin-settings-card {
+  padding: 24px !important;
+  border-radius: 16px !important;
+  background: white !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.admin-settings-card.dark-mode {
+  background: #2a2a2a !important;
+  color: #fff !important;
+}
+
+.admin-settings-card:hover {
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Logo Preview */
+.admin-logo-preview {
+  margin-bottom: 16px;
+  text-align: center;
+  padding: 16px;
+  background: #f5f5f5;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.admin-logo-preview.dark-mode {
+  background: #1a1a1a;
+}
+
+.admin-logo-preview:hover {
+  transform: scale(1.02);
+}
+
+/* Buttons */
+.admin-button {
+  border-radius: 12px !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  transition: all 0.3s ease !important;
+}
+
+.admin-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Tabs */
+.admin-tabs {
+  margin-bottom: 32px !important;
+  margin-top: 32px !important;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.admin-tabs.dark-mode {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-tab {
+  font-weight: 600 !important;
+  text-transform: none !important;
+  font-size: 15px !important;
+  transition: all 0.3s ease !important;
+}
+
+.admin-tab.dark-mode {
+  color: #bbb !important;
+}
+
+.admin-tab.dark-mode.Mui-selected {
+  color: #90caf9 !important;
+}
+
+/* Dialogs */
+.admin-dialog-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+  font-weight: 700 !important;
+  padding: 20px 24px !important;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered Animation */
+.admin-stats-card:nth-child(1) { animation-delay: 0.1s; }
+.admin-stats-card:nth-child(2) { animation-delay: 0.2s; }
+.admin-stats-card:nth-child(3) { animation-delay: 0.3s; }
+.admin-stats-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* Responsive */
+@media (max-width: 960px) {
+  .admin-stats-card {
+    margin-bottom: 16px;
+  }
+  
+  .admin-table-paper {
+    overflow-x: auto;
+  }
+}

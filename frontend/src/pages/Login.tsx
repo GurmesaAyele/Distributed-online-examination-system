@@ -11,7 +11,6 @@ import {
 } from '@mui/material'
 import api from '../api/axios'
 import { useAuthStore } from '../store/authStore'
-import '../styles/Login.css'
 
 const Login = () => {
   const [username, setUsername] = useState('')
@@ -57,35 +56,56 @@ const Login = () => {
   }
 
   return (
-    <div className="login-container">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        py: 2
+      }}
+    >
       <Container maxWidth="sm">
-        <div className="login-content">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
           {/* Logo at top-center of page */}
           {systemSettings.logo && (
-            <div className="login-logo-container">
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
               <img 
                 src={`http://localhost:8000${systemSettings.logo}`} 
                 alt="System Logo" 
-                className="login-logo"
+                style={{ 
+                  maxWidth: '200px', 
+                  maxHeight: '80px', 
+                  objectFit: 'contain',
+                  display: 'block',
+                  margin: '0 auto'
+                }}
               />
-            </div>
+            </Box>
           )}
 
-          <Paper elevation={3} className="login-paper">
-            <Typography component="h1" variant="h5" align="center" className="login-title">
+          <Paper elevation={3} sx={{ p: 3, width: '100%' }}>
+            <Typography component="h1" variant="h5" align="center" gutterBottom>
               {systemSettings.welcome_text}
             </Typography>
-            <Typography component="h2" variant="body1" align="center" className="login-subtitle">
+            <Typography component="h2" variant="body1" align="center" color="textSecondary" gutterBottom>
               Login
             </Typography>
 
             {error && (
-              <Alert severity="error" className="login-alert">
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
               </Alert>
             )}
 
-            <Box component="form" onSubmit={handleSubmit} className="login-form">
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
               <TextField
                 margin="normal"
                 required
@@ -96,7 +116,6 @@ const Login = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 size="small"
-                className="login-textfield"
               />
               <TextField
                 margin="normal"
@@ -108,25 +127,24 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 size="small"
-                className="login-textfield"
               />
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
+                sx={{ mt: 2, mb: 1 }}
                 disabled={loading}
-                className="login-button"
               >
                 {loading ? 'Logging in...' : 'Login'}
               </Button>
-              <Typography variant="caption" className="login-footer-text">
+              <Typography variant="caption" align="center" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
                 Contact your administrator for account access
               </Typography>
             </Box>
           </Paper>
-        </div>
+        </Box>
       </Container>
-    </div>
+    </Box>
   )
 }
 
