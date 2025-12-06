@@ -468,8 +468,17 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         return Announcement.objects.filter(Q(target_role='') | Q(target_role=user.role))
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
     def perform_create(self, serializer):
+        # Only admins can create announcements
+        if self.request.user.role != 'admin':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only admins can create announcements')
         serializer.save(created_by=self.request.user)
     
     @action(detail=False, methods=['get'])

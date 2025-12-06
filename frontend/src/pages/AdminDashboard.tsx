@@ -371,15 +371,27 @@ const AdminDashboard = () => {
   }
 
   const handleCreateAnnouncement = async () => {
+    if (!announcementForm.title || !announcementForm.content) {
+      alert('❌ Please fill in both title and content')
+      return
+    }
+
     try {
       await api.post('/announcements/', announcementForm)
       setOpenAnnouncementDialog(false)
       setAnnouncementForm({ title: '', content: '', target_role: '' })
       alert('✅ Announcement sent successfully!')
       fetchAnnouncements()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating announcement:', error)
-      alert('❌ Failed to send announcement')
+      console.error('Error response:', error.response?.data)
+      const errorMsg = error.response?.data?.detail 
+        || error.response?.data?.message
+        || error.response?.data?.title?.[0]
+        || error.response?.data?.content?.[0]
+        || JSON.stringify(error.response?.data)
+        || 'Failed to send announcement'
+      alert(`❌ ${errorMsg}`)
     }
   }
 
