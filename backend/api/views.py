@@ -620,3 +620,20 @@ class ExamFeedbackViewSet(viewsets.ModelViewSet):
         feedback.save()
         
         return Response({'message': 'Response added successfully'})
+    
+    @action(detail=True, methods=['post'])
+    def mark_as_read(self, request, pk=None):
+        """Teacher marks feedback as read without responding"""
+        if request.user.role not in ['teacher', 'admin']:
+            return Response({'error': 'Only teachers can mark feedback as read'}, status=status.HTTP_403_FORBIDDEN)
+        
+        feedback = self.get_object()
+        
+        # Check if teacher owns the exam
+        if request.user.role == 'teacher' and feedback.exam.teacher != request.user:
+            return Response({'error': 'You can only mark feedback for your exams'}, status=status.HTTP_403_FORBIDDEN)
+        
+        feedback.is_reviewed = True
+        feedback.save()
+        
+        return Response({'message': 'Feedback marked as read'})

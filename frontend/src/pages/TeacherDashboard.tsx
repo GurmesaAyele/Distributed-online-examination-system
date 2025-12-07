@@ -427,6 +427,21 @@ const TeacherDashboard = () => {
     }
   }
 
+  const handleMarkFeedbackAsRead = async (feedbackId: number) => {
+    if (!window.confirm('Mark this feedback as read without responding?')) {
+      return
+    }
+
+    try {
+      await api.post(`/feedbacks/${feedbackId}/mark_as_read/`)
+      alert('✅ Feedback marked as read!')
+      fetchFeedbacks()
+    } catch (error: any) {
+      console.error('Error marking feedback as read:', error)
+      alert('❌ Failed to mark as read: ' + (error.response?.data?.detail || 'Unknown error'))
+    }
+  }
+
   const handleChangePassword = async () => {
     if (!passwordForm.old_password || !passwordForm.new_password || !passwordForm.confirm_password) {
       alert('❌ Please fill in all password fields')
@@ -1526,20 +1541,30 @@ const TeacherDashboard = () => {
                               </Box>
                             )}
                           </Box>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                             <Chip 
                               label={feedback.is_reviewed ? 'Reviewed' : 'Pending'} 
                               color={feedback.is_reviewed ? 'success' : 'warning'}
                               size="small"
                             />
                             {!feedback.is_reviewed && (
-                              <Button 
-                                size="small" 
-                                variant="contained"
-                                onClick={() => handleOpenResponseDialog(feedback)}
-                              >
-                                Respond
-                              </Button>
+                              <>
+                                <Button 
+                                  size="small" 
+                                  variant="contained"
+                                  onClick={() => handleOpenResponseDialog(feedback)}
+                                >
+                                  💬 Respond
+                                </Button>
+                                <Button 
+                                  size="small" 
+                                  variant="outlined"
+                                  color="success"
+                                  onClick={() => handleMarkFeedbackAsRead(feedback.id)}
+                                >
+                                  ✓ Mark as Read
+                                </Button>
+                              </>
                             )}
                           </Box>
                         </Box>
@@ -1549,14 +1574,22 @@ const TeacherDashboard = () => {
                           {feedback.comment}
                         </Typography>
 
-                        {feedback.teacher_response && (
+                        {feedback.is_reviewed && (
                           <Box sx={{ mt: 2, p: 2, bgcolor: darkMode ? '#1a3a1a' : '#e8f5e9', borderRadius: 1, border: '1px solid #4caf50' }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1, color: '#4caf50' }}>
-                              Your Response:
-                            </Typography>
-                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                              {feedback.teacher_response}
-                            </Typography>
+                            {feedback.teacher_response ? (
+                              <>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1, color: '#4caf50' }}>
+                                  💬 Your Response:
+                                </Typography>
+                                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                                  {feedback.teacher_response}
+                                </Typography>
+                              </>
+                            ) : (
+                              <Typography variant="body2" sx={{ fontStyle: 'italic', color: '#4caf50' }}>
+                                ✓ Marked as read (no response)
+                              </Typography>
+                            )}
                           </Box>
                         )}
                       </CardContent>
@@ -1591,17 +1624,35 @@ const TeacherDashboard = () => {
             fullWidth
             multiline
             rows={4}
-            label="Your Response"
+            label="Your Response (Optional)"
             value={teacherResponse}
             onChange={(e) => setTeacherResponse(e.target.value)}
-            placeholder="Thank the student and address their feedback..."
-            required
+            placeholder="Thank the student and address their feedback... (or just mark as read)"
           />
+          
+          <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+            💡 You can either write a response or simply mark this feedback as read
+          </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ gap: 1 }}>
           <Button onClick={() => setOpenResponseDialog(false)}>Cancel</Button>
-          <Button onClick={handleSubmitResponse} variant="contained" color="primary">
-            Send Response
+          <Button 
+            onClick={() => {
+              handleMarkFeedbackAsRead(selectedFeedback?.id)
+              setOpenResponseDialog(false)
+            }} 
+            variant="outlined" 
+            color="success"
+          >
+            ✓ Mark as Read
+          </Button>
+          <Button 
+            onClick={handleSubmitResponse} 
+            variant="contained" 
+            color="primary"
+            disabled={!teacherResponse.trim()}
+          >
+            💬 Send Response
           </Button>
         </DialogActions>
       </Dialog>
