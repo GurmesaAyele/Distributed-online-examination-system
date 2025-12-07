@@ -655,18 +655,66 @@ const StudentDashboard = () => {
                       </Box>
                     )}
 
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      📅 Start: {new Date(exam.start_time).toLocaleString()}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      🏁 End: {new Date(exam.end_time).toLocaleString()}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      ⏱️ Duration: {exam.duration_minutes} minutes
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      📊 Total Marks: {exam.total_marks}
-                    </Typography>
+                    {/* Exam Details Section */}
+                    <Box sx={{ my: 2, p: 2, bgcolor: darkMode ? '#2a2a2a' : '#f9f9f9', borderRadius: 1, border: '1px solid #ddd' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'primary.main' }}>
+                        📋 Exam Details
+                      </Typography>
+                      
+                      {exam.description && (
+                        <Typography variant="body2" sx={{ mb: 1, fontStyle: 'italic' }}>
+                          {exam.description}
+                        </Typography>
+                      )}
+                      
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        📅 <strong>Start:</strong> {new Date(exam.start_time).toLocaleString()}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        🏁 <strong>End:</strong> {new Date(exam.end_time).toLocaleString()}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        ⏱️ <strong>Duration:</strong> {exam.duration_minutes} minutes
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        📊 <strong>Total Marks:</strong> {exam.total_marks}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        📝 <strong>Total Questions:</strong> {exam.total_questions || 'N/A'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        👨‍🏫 <strong>Teacher:</strong> {exam.teacher_name || 'N/A'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        🏫 <strong>Department:</strong> {exam.department_name || 'N/A'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        📚 <strong>Course:</strong> {exam.course_name || 'N/A'}
+                      </Typography>
+                      
+                      {exam.passing_marks && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          ✅ <strong>Passing Marks:</strong> {exam.passing_marks}
+                        </Typography>
+                      )}
+                      
+                      {exam.negative_marking && (
+                        <Typography variant="body2" sx={{ mb: 0.5, color: 'error.main' }}>
+                          ⚠️ <strong>Negative Marking:</strong> -{exam.negative_marks_per_question} per wrong answer
+                        </Typography>
+                      )}
+                      
+                      {exam.instructions && (
+                        <Box sx={{ mt: 1, p: 1, bgcolor: darkMode ? '#1a1a1a' : '#fff3cd', borderRadius: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                            📌 Instructions:
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {exam.instructions}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
 
                     <Button
                       variant="contained"

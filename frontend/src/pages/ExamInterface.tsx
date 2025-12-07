@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Container, Typography, Button, Paper, Radio, RadioGroup, FormControlLabel, TextField, Alert, Dialog, DialogTitle, DialogContent, DialogActions, LinearProgress } from '@mui/material'
+import { Box, Container, Typography, Button, Paper, Radio, RadioGroup, FormControlLabel, TextField, Alert, Dialog, DialogTitle, DialogContent, DialogActions, LinearProgress, Rating } from '@mui/material'
 import api from '../api/axios'
 
 const ExamInterface = () => {
@@ -14,6 +14,11 @@ const ExamInterface = () => {
   const [violations, setViolations] = useState(0)
   const [showWarning, setShowWarning] = useState(false)
   const [warningMessage, setWarningMessage] = useState('')
+  const [openFeedbackDialog, setOpenFeedbackDialog] = useState(false)
+  const [feedbackForm, setFeedbackForm] = useState({
+    comment: '',
+    rating: 5
+  })
   const questionsPerPage = 3
   
   // Use ref to track violations to avoid stale closure
@@ -41,8 +46,8 @@ const ExamInterface = () => {
     if (attempt) {
       try {
         await api.post(`/attempts/${attempt.id}/submit_exam/`)
-        alert('Exam submitted successfully!')
-        navigate('/student')
+        // Show feedback dialog even for auto-submit
+        setOpenFeedbackDialog(true)
       } catch (error) {
         console.error('Error submitting exam:', error)
       }
@@ -192,12 +197,43 @@ const ExamInterface = () => {
     if (attempt && window.confirm('Are you sure you want to submit the exam?')) {
       try {
         await api.post(`/attempts/${attempt.id}/submit_exam/`)
-        alert('Exam submitted successfully!')
-        navigate('/student')
+        // Show feedback dialog immediately after submission
+        setOpenFeedbackDialog(true)
       } catch (error) {
         console.error('Error submitting exam:', error)
+        alert('Error submitting exam. Please try again.')
       }
     }
+  }
+
+  const handleSubmitFeedback = async () => {
+    try {
+      await api.post('/feedbacks/', {
+        exam: exam.id,
+        attempt: attempt.id,
+        comment: feedbackForm.comment,
+        rating: feedbackForm.rating
+      })
+      setOpenFeedbackDialog(false)
+      alert('✅ Exam submitted successfully! Thank you for your feedback.')
+      navigate('/student')
+    } catch (error: any) {
+      console.error('Error submitting feedback:', error)
+      if (error.response?.data?.non_field_errors) {
+        alert('You have already submitted feedback for this exam.')
+        setOpenFeedbackDialog(false)
+        navigate('/student')
+      } else {
+        alert('Failed to submit feedback. But your exam was submitted successfully.')
+        navigate('/student')
+      }
+    }
+  }
+
+  const handleSkipFeedback = () => {
+    setOpenFeedbackDialog(false)
+    alert('✅ Exam submitted successfully!')
+    navigate('/student')
   }
 
   if (!exam || !attempt) return <Box sx={{ p: 4 }}><Typography>Loading exam...</Typography></Box>
@@ -331,6 +367,63 @@ const ExamInterface = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowWarning(false)} variant="contained">I Understand</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Feedback Dialog - Shown immediately after exam submission */}
+      <Dialog open={openFeedbackDialog} onClose={handleSkipFeedback} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            ✅ Exam Submitted Successfully!
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+            Please share your feedback about this exam
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              📝 Your Comments (Optional)
+            </Typography>
+            <Typography variant="caption" color="textSecondary" sx={{ mb: 1, display: 'block' }}>
+              Share your thoughts about the exam, any confusing questions, or suggestions for improvement
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="Example: Question 5 was confusing, the wording could be clearer..."
+              value={feedbackForm.comment}
+              onChange={(e) => setFeedbackForm({ ...feedbackForm, comment: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              ⭐ Rate this Exam (Optional)
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Rating
+                value={feedbackForm.rating}
+                onChange={(_, newValue) => setFeedbackForm({ ...feedbackForm, rating: newValue || 5 })}
+                size="large"
+              />
+              <Typography variant="body2" color="textSecondary">
+                ({feedbackForm.rating}/5)
+              </Typography>
+            </Box>
+
+            <Alert severity="info" sx={{ mt: 2 }}>
+              💡 Your feedback helps teachers improve the exam quality. It will be sent to your teacher.
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={handleSkipFeedback} variant="outlined">
+            Skip Feedback
+          </Button>
+          <Button onClick={handleSubmitFeedback} variant="contained" color="primary">
+            Submit Feedback
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
