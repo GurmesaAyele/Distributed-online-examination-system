@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import {
   Box, Container, Typography, Card, CardContent, Button, Grid, AppBar, Toolbar, IconButton, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, Chip, Switch, FormControlLabel, Tabs, Tab
+  TableContainer, TableHead, TableRow, Paper, Chip, Switch, FormControlLabel, Tabs, Tab, Menu
 } from '@mui/material'
-import { Logout, Add, Edit, Delete, CheckCircle, Cancel, TrendingUp, People, School, Assessment, Brightness4, Brightness7 } from '@mui/icons-material'
+import { Logout, Add, Edit, Delete, CheckCircle, Cancel, TrendingUp, People, School, Assessment, Brightness4, Brightness7, Settings, Lock } from '@mui/icons-material'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import api from '../api/axios'
 import { useAuthStore } from '../store/authStore'
@@ -92,6 +92,13 @@ const AdminDashboard = () => {
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', target_role: '' })
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [openChangePasswordDialog, setOpenChangePasswordDialog] = useState(false)
+  const [changePasswordForm, setChangePasswordForm] = useState({
+    old_password: '',
+    new_password: '',
+    confirm_password: ''
+  })
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [stats, setStats] = useState({ total_users: 0, total_exams: 0, pending_exams: 0, active_students: 0 })
   const [chartData, setChartData] = useState<any>({
     usersByRole: [],
@@ -395,6 +402,41 @@ const AdminDashboard = () => {
     }
   }
 
+  const handleChangePassword = async () => {
+    if (!changePasswordForm.old_password || !changePasswordForm.new_password || !changePasswordForm.confirm_password) {
+      alert('❌ Please fill in all password fields')
+      return
+    }
+
+    if (changePasswordForm.new_password !== changePasswordForm.confirm_password) {
+      alert('❌ New passwords do not match')
+      return
+    }
+
+    if (changePasswordForm.new_password.length < 8) {
+      alert('❌ New password must be at least 8 characters long')
+      return
+    }
+
+    try {
+      await api.post('/users/change_password/', {
+        old_password: changePasswordForm.old_password,
+        new_password: changePasswordForm.new_password
+      })
+      setOpenChangePasswordDialog(false)
+      setChangePasswordForm({ old_password: '', new_password: '', confirm_password: '' })
+      alert('✅ Password changed successfully! Please login again with your new password.')
+      setTimeout(() => {
+        logout()
+        navigate('/login')
+      }, 2000)
+    } catch (error: any) {
+      console.error('Error changing password:', error)
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to change password'
+      alert(`❌ ${errorMsg}`)
+    }
+  }
+
   return (
     <Box sx={{ bgcolor: darkMode ? '#121212' : '#f5f5f5', minHeight: '100vh' }}>
       <AppBar position="static" sx={{ bgcolor: darkMode ? '#1e1e1e' : '#1976d2' }}>
@@ -405,9 +447,21 @@ const AdminDashboard = () => {
           </IconButton>
           <Avatar src={user?.profile_picture} sx={{ mx: 2 }} />
           <Typography variant="body1" sx={{ mr: 2 }}>{user?.first_name} {user?.last_name}</Typography>
-          <IconButton color="inherit" onClick={() => { logout(); navigate('/login') }}>
-            <Logout />
+          <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)} title="Settings">
+            <Settings />
           </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={() => setAnchorEl(null)}
+          >
+            <MenuItem onClick={() => { setAnchorEl(null); setOpenChangePasswordDialog(true); }}>
+              <Lock sx={{ mr: 1 }} /> Change Password
+            </MenuItem>
+            <MenuItem onClick={() => { setAnchorEl(null); logout(); navigate('/login'); }}>
+              <Logout sx={{ mr: 1 }} /> Logout
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
@@ -1176,6 +1230,52 @@ const AdminDashboard = () => {
         <DialogActions>
           <Button onClick={() => setOpenAnnouncementDialog(false)}>Cancel</Button>
           <Button onClick={handleCreateAnnouncement} variant="contained">Send</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={openChangePasswordDialog} onClose={() => setOpenChangePasswordDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Enter your current password and choose a new password (minimum 8 characters)
+          </Typography>
+          <TextField
+            fullWidth
+            type="password"
+            label="Current Password"
+            value={changePasswordForm.old_password}
+            onChange={(e) => setChangePasswordForm({ ...changePasswordForm, old_password: e.target.value })}
+            sx={{ mt: 2 }}
+            required
+          />
+          <TextField
+            fullWidth
+            type="password"
+            label="New Password"
+            value={changePasswordForm.new_password}
+            onChange={(e) => setChangePasswordForm({ ...changePasswordForm, new_password: e.target.value })}
+            sx={{ mt: 2 }}
+            helperText="Minimum 8 characters"
+            required
+          />
+          <TextField
+            fullWidth
+            type="password"
+            label="Confirm New Password"
+            value={changePasswordForm.confirm_password}
+            onChange={(e) => setChangePasswordForm({ ...changePasswordForm, confirm_password: e.target.value })}
+            sx={{ mt: 2 }}
+            error={changePasswordForm.confirm_password !== '' && changePasswordForm.new_password !== changePasswordForm.confirm_password}
+            helperText={changePasswordForm.confirm_password !== '' && changePasswordForm.new_password !== changePasswordForm.confirm_password ? 'Passwords do not match' : ''}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenChangePasswordDialog(false)}>Cancel</Button>
+          <Button onClick={handleChangePassword} variant="contained" color="primary">
+            Change Password
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import {
   Box, Container, Typography, Card, CardContent, Button, Grid, AppBar, Toolbar, IconButton, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, Chip, Tabs, Tab
+  TableContainer, TableHead, TableRow, Paper, Chip, Tabs, Tab, Menu, Alert
 } from '@mui/material'
-import { Logout, Visibility, School, Assessment, People, TrendingUp, Brightness4, Brightness7 } from '@mui/icons-material'
+import { Logout, Visibility, School, Assessment, People, TrendingUp, Brightness4, Brightness7, Settings, Lock } from '@mui/icons-material'
 import { BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import api from '../api/axios'
 import { useAuthStore } from '../store/authStore'
@@ -33,6 +33,13 @@ const TeacherDashboard = () => {
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null)
   const [teacherResponse, setTeacherResponse] = useState('')
   const [openResponseDialog, setOpenResponseDialog] = useState(false)
+  const [openPasswordDialog, setOpenPasswordDialog] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    old_password: '',
+    new_password: '',
+    confirm_password: ''
+  })
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [examForm, setExamForm] = useState({
     title: '', 
     description: '', 
@@ -420,6 +427,41 @@ const TeacherDashboard = () => {
     }
   }
 
+  const handleChangePassword = async () => {
+    if (!passwordForm.old_password || !passwordForm.new_password || !passwordForm.confirm_password) {
+      alert('❌ Please fill in all password fields')
+      return
+    }
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      alert('❌ New passwords do not match')
+      return
+    }
+
+    if (passwordForm.new_password.length < 8) {
+      alert('❌ New password must be at least 8 characters long')
+      return
+    }
+
+    try {
+      await api.post('/users/change_password/', {
+        old_password: passwordForm.old_password,
+        new_password: passwordForm.new_password
+      })
+      setOpenPasswordDialog(false)
+      setPasswordForm({ old_password: '', new_password: '', confirm_password: '' })
+      alert('✅ Password changed successfully! Please login again with your new password.')
+      setTimeout(() => {
+        logout()
+        navigate('/login')
+      }, 2000)
+    } catch (error: any) {
+      console.error('Error changing password:', error)
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to change password'
+      alert(`❌ ${errorMsg}`)
+    }
+  }
+
   return (
     <Box sx={{ bgcolor: darkMode ? '#121212' : '#f5f5f5', minHeight: '100vh' }}>
       <AppBar position="static" sx={{ bgcolor: darkMode ? '#1e1e1e' : '#1976d2' }}>
@@ -430,9 +472,21 @@ const TeacherDashboard = () => {
           </IconButton>
           <Avatar src={user?.profile_picture} sx={{ mx: 2 }} />
           <Typography variant="body1" sx={{ mr: 2 }}>{user?.first_name} {user?.last_name}</Typography>
-          <IconButton color="inherit" onClick={() => { logout(); navigate('/login') }}>
-            <Logout />
+          <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)} title="Settings">
+            <Settings />
           </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={() => setAnchorEl(null)}
+          >
+            <MenuItem onClick={() => { setAnchorEl(null); setOpenPasswordDialog(true); }}>
+              <Lock sx={{ mr: 1 }} /> Change Password
+            </MenuItem>
+            <MenuItem onClick={() => { setAnchorEl(null); logout(); navigate('/login'); }}>
+              <Logout sx={{ mr: 1 }} /> Logout
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
@@ -1606,6 +1660,52 @@ const TeacherDashboard = () => {
         <DialogActions>
           <Button onClick={() => setOpenQuestionDialog(false)}>Cancel</Button>
           <Button onClick={handleSaveQuestions} variant="contained">Save All Questions</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={openPasswordDialog} onClose={() => setOpenPasswordDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Enter your current password and choose a new password (minimum 8 characters)
+          </Typography>
+          <TextField
+            fullWidth
+            type="password"
+            label="Current Password"
+            value={passwordForm.old_password}
+            onChange={(e) => setPasswordForm({ ...passwordForm, old_password: e.target.value })}
+            sx={{ mt: 2 }}
+            required
+          />
+          <TextField
+            fullWidth
+            type="password"
+            label="New Password"
+            value={passwordForm.new_password}
+            onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+            sx={{ mt: 2 }}
+            helperText="Minimum 8 characters"
+            required
+          />
+          <TextField
+            fullWidth
+            type="password"
+            label="Confirm New Password"
+            value={passwordForm.confirm_password}
+            onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+            sx={{ mt: 2 }}
+            error={passwordForm.confirm_password !== '' && passwordForm.new_password !== passwordForm.confirm_password}
+            helperText={passwordForm.confirm_password !== '' && passwordForm.new_password !== passwordForm.confirm_password ? 'Passwords do not match' : ''}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPasswordDialog(false)}>Cancel</Button>
+          <Button onClick={handleChangePassword} variant="contained" color="primary">
+            Change Password
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

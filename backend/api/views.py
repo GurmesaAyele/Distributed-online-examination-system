@@ -93,6 +93,30 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(user, context={'request': request})
             return Response(serializer.data)
         return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        """Allow users to change their own password"""
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+        
+        if not old_password or not new_password:
+            return Response({'error': 'Both old and new passwords are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if old password is correct
+        if not user.check_password(old_password):
+            return Response({'error': 'Current password is incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate new password
+        if len(new_password) < 8:
+            return Response({'error': 'New password must be at least 8 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+        
+        return Response({'message': 'Password changed successfully'})
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
