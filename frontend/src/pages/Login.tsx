@@ -49,7 +49,14 @@ const Login = () => {
       setAuth(response.data.user, response.data.access)
       navigate(`/${response.data.user.role}`)
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed')
+      console.error('Login error:', err)
+      if (err.response?.status === 401) {
+        setError('Invalid username or password. Please try again.')
+      } else if (err.response?.status === 403) {
+        setError(err.response?.data?.error || 'Your account has been deactivated. Please contact the administrator.')
+      } else {
+        setError(err.response?.data?.error || 'Login failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -100,7 +107,16 @@ const Login = () => {
             </Typography>
 
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  mb: 2, 
+                  '& .MuiAlert-message': { 
+                    fontWeight: 500 
+                  }
+                }}
+                onClose={() => setError('')}
+              >
                 {error}
               </Alert>
             )}
