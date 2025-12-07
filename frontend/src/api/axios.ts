@@ -22,7 +22,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only auto-logout on 401 if NOT on the login page
+    // This allows login errors to be handled by the Login component
+    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
       useAuthStore.getState().logout()
       window.location.href = '/login'
     }

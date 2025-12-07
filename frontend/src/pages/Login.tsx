@@ -49,7 +49,6 @@ const Login = () => {
       setAuth(response.data.user, response.data.access)
       navigate(`/${response.data.user.role}`)
     } catch (err: any) {
-      console.error('Login error:', err)
       if (err.response?.status === 401) {
         setError('Invalid username or password. Please try again.')
       } else if (err.response?.status === 403) {
