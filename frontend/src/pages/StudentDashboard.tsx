@@ -280,8 +280,9 @@ const StudentDashboard = () => {
 
   const downloadCertificate = async (attemptId: number) => {
     try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
       const response = await api.get(`/attempts/${attemptId}/download_certificate/`)
-      window.open(`http://localhost:8000${response.data.pdf_url}`, '_blank')
+      window.open(`${API_BASE_URL}${response.data.pdf_url}`, '_blank')
     } catch (error) {
       console.error('Error downloading certificate:', error)
     }

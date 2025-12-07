@@ -84,7 +84,7 @@ const Login = () => {
           {systemSettings.logo && (
             <Box sx={{ textAlign: 'center', mb: 2 }}>
               <img 
-                src={`http://localhost:8000${systemSettings.logo}`} 
+                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${systemSettings.logo}`} 
                 alt="System Logo" 
                 style={{ 
                   maxWidth: '200px', 

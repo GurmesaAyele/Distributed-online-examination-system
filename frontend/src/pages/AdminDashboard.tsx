@@ -1034,7 +1034,7 @@ const AdminDashboard = () => {
                   {systemSettings.logo && (
                     <Box sx={{ mb: 2, textAlign: 'center' }}>
                       <img 
-                        src={`http://localhost:8000${systemSettings.logo}`} 
+                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${systemSettings.logo}`} 
                         alt="Current Logo" 
                         style={{ maxWidth: '200px', maxHeight: '100px', objectFit: 'contain' }}
                       />
