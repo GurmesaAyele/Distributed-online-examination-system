@@ -1,0 +1,32 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import AdminDashboard from './pages/AdminDashboard';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+});
+
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route path="/" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
+  );
+}
+
+export default App;
