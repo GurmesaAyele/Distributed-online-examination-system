@@ -1,0 +1,38 @@
+import { Card, CardContent, Typography, Box, Chip, Button } from '@mui/material'
+import { Exam, Attempt } from '../types'
+
+interface ExamCardProps {
+  exam: Exam
+  attempt?: Attempt
+  darkMode: boolean
+  onStart: (examId: number) => void
+  onFeedback?: (exam: Exam, attempt?: Attempt) => void
+}
+
+export const ExamCard: React.FC<ExamCardProps> = ({ exam, attempt, darkMode, onStart, onFeedback }) => {
+  const isCompleted = attempt?.status === 'submitted' || attempt?.status === 'evaluated'
+  const isBanned = attempt?.status === 'auto_submitted'
+
+  const examStatusLabel = isBanned ? 'Banned' : isCompleted ? 'Completed' : 'Upcoming'
+  const borderColor = isBanned ? 'error.main' : isCompleted ? 'secondary.main' : 'primary.main'
+
+  return (
+    <Card sx={{ border: `2px solid ${borderColor}`, bgcolor: darkMode ? '#1e1e1e' : 'white', color: darkMode ? '#fff' : 'inherit' }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="h6">{exam.title}</Typography>
+          <Chip label={examStatusLabel} color={isBanned ? 'error' : isCompleted ? 'secondary' : 'info'} />
+        </Box>
+        <Typography variant="body2">{exam.subject_name}</Typography>
+        <Button fullWidth sx={{ mt: 2 }} onClick={() => onStart(exam.id)}>
+          {isBanned ? '🚫 Banned' : isCompleted ? '✅ Completed' : '▶️ Start Exam'}
+        </Button>
+        {isCompleted && onFeedback && (
+          <Button fullWidth sx={{ mt: 1 }} onClick={() => onFeedback(exam, attempt)}>
+            💬 Leave Feedback
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
