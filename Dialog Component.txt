@@ -1,0 +1,22 @@
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Alert } from '@mui/material'
+
+interface AppDialogProps {
+  open: boolean
+  title: string
+  message: string
+  severity?: 'success' | 'error' | 'info' | 'warning'
+  onClose: () => void
+}
+
+export const AppDialog: React.FC<AppDialogProps> = ({ open, title, message, severity = 'info', onClose }) => (
+  <Dialog open={open} onClose={onClose}>
+    <DialogTitle>{title}</DialogTitle>
+    <DialogContent>
+      <Alert severity={severity}>{message}</Alert>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onClose}>Close</Button>
+    </DialogActions>
+  </Dialog>
+)
+export default AppDialog
