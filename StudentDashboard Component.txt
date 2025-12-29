@@ -1,0 +1,88 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Container, Typography, Grid, Tabs, Tab, IconButton, Avatar } from '@mui/material'
+import { Brightness4, Brightness7, Upload, Settings, Lock, Logout } from '@mui/icons-material'
+import api from '../api/axios'
+import { useAuthStore } from '../store/authStore'
+import { User, Exam, Attempt, Feedback } from '../types'
+import { ExamCard } from './ExamCard'
+import { AppDialog } from './AppDialog'
+
+export const StudentDashboard: React.FC = () => {
+  const { user, logout } = useAuthStore()
+  const navigate = useNavigate()
+
+  const [activeTab, setActiveTab] = useState(0)
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
+  const [exams, setExams] = useState<Exam[]>([])
+  const [attempts, setAttempts] = useState<Attempt[]>([])
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [dialog, setDialog] = useState({ open: false, title: '', message: '', severity: 'info' as const })
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode)
+    localStorage.setItem('darkMode', String(!darkMode))
+  }
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [examsRes, attemptsRes, feedbackRes] = await Promise.all([
+          api.get('/exams/'),
+          api.get('/attempts/'),
+          api.get('/feedbacks/')
+        ])
+        setExams(examsRes.data.filter((e: Exam) => e.status === 'approved'))
+        setAttempts(attemptsRes.data)
+        setFeedbacks(feedbackRes.data)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const startExam = (examId: number) => navigate(`/exam/${examId}`)
+  const showDialog = (title: string, message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setDialog({ open: true, title, message, severity })
+  }
+
+  return (
+    <Container sx={{ mt: 4, color: darkMode ? '#fff' : 'inherit' }}>
+      <Typography variant="h4" gutterBottom>Welcome, {user?.first_name}!</Typography>
+
+      <IconButton onClick={toggleDarkMode}>{darkMode ? <Brightness7 /> : <Brightness4 />}</IconButton>
+      <Avatar src={user?.profile_picture} sx={{ mx: 2 }} />
+
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
+        <Tab label="My Exams" />
+        <Tab label="Feedback" />
+      </Tabs>
+
+      {activeTab === 0 && (
+        <Grid container spacing={3}>
+          {exams.map(exam => {
+            const attempt = attempts.find(a => a.exam === exam.id)
+            return (
+              <Grid item xs={12} md={6} key={exam.id}>
+                <ExamCard
+                  exam={exam}
+                  attempt={attempt}
+                  darkMode={darkMode}
+                  onStart={startExam}
+                  onFeedback={(e, a) => showDialog('Feedback', `Leave feedback for ${e.title}`, 'info')}
+                />
+              </Grid>
+            )
+          })}
+        </Grid>
+      )}
+
+      {activeTab === 1 && (
+        <Typography>Feedback Tab - List all feedbacks here</Typography>
+      )}
+
+      <AppDialog {...dialog} onClose={() => setDialog({ ...dialog, open: false })} />
+    </Container>
+  )
+}
