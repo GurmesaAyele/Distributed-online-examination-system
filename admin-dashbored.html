@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="admin-dashboard.css">
+</head>
+
+<body>
+
+  <div class="admin-dashboard">
+
+    <div class="admin-appbar">
+      <span>Admin Dashboard</span>
+      <span class="admin-status pending">3 Notifications</span>
+    </div>
+
+    <div class="admin-alert success">
+      ✔ System running normally
+    </div>
+
+    <div class="admin-stats">
+      <div class="admin-stats-card">
+        <h3>Total Users</h3>
+        <p>1,240</p>
+      </div>
+
+      <div class="admin-stats-card">
+        <h3>Active Exams</h3>
+        <p>12</p>
+      </div>
+
+      <div class="admin-stats-card">
+        <h3>Pending Requests</h3>
+        <p>8</p>
+      </div>
+
+      <div class="admin-stats-card">
+        <h3>Departments</h3>
+        <p>6</p>
+      </div>
+    </div>
+
+    <div class="admin-chart-paper">
+      <h3>Performance Overview</h3>
+      <div class="admin-skeleton"></div>
+    </div>
+
+    <div class="admin-table-paper">
+      <h3>User Management</h3>
+      <input type="text" class="admin-search" placeholder="Search users...">
+
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>John Doe</td>
+            <td>Teacher</td>
+            <td><span class="admin-status active">Active</span></td>
+          </tr>
+          <tr>
+            <td>Mary Smith</td>
+            <td>Student</td>
+            <td><span class="admin-status inactive">Inactive</span></td>
+          </tr>
+          <tr>
+            <td>Alex Brown</td>
+            <td>Admin</td>
+            <td><span class="admin-status pending">Pending</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="admin-fab">+</div>
+
+</body>
+</html>
